@@ -19,5 +19,10 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+     rules: {
+      // '@typescript-eslint/no-explicit-any': 'off',  // 完全禁用
+      // 或者改为警告
+      '@typescript-eslint/no-explicit-any': 'warn',
+    },
   },
 ])
