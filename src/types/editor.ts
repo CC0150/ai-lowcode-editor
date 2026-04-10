@@ -1,10 +1,17 @@
 // 表单专用的组件类型
-export type FormItemType = 'input' | 'textarea' | 'radio' | 'select' | 'button';
+export type FormItemType = "input" | "textarea" | "radio" | "select" | "button";
 
 // 选项接口（用于单选、多选、下拉）
 export interface OptionItem {
   label: string;
   value: string;
+}
+
+// 联动规则接口
+export interface VisibleRule {
+  sourceId: string; // 依赖的题目 ID
+  operator: "==="; // 目前仅支持等于操作
+  value: string; // 期望的值
 }
 
 // 核心：表单组件 Schema
@@ -19,7 +26,7 @@ export interface ComponentSchema {
     buttonText?: string; // 按钮文字
   };
   // 留给未来的高级功能：逻辑联动表达式
-  visibleOn?: string; 
+  visibleRule?: VisibleRule;
 }
 
 export interface EditorStore {
@@ -29,5 +36,5 @@ export interface EditorStore {
   selectComponent: (id: string | null) => void;
   updateComponent: (id: string, updates: Partial<ComponentSchema>) => void;
   updateProps: (id: string, props: any) => void;
-  reorderComponents: (oldIndex: number, newIndex: number) => void; 
+  reorderComponents: (oldIndex: number, newIndex: number) => void;
 }
