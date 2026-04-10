@@ -1,26 +1,33 @@
-import React from 'react';
+// 表单专用的组件类型
+export type FormItemType = 'input' | 'textarea' | 'radio' | 'select' | 'button';
 
-// 支持的组件类型
-export type ComponentType = 'text' | 'button' | 'image' | 'container';
-
-// 单个组件的数据结构 (JSON Schema)
-export interface ComponentSchema {
-  id: string;
-  type: ComponentType;
-  name: string; // 在面板上显示的名称
-  props: Record<string, any>; // 业务属性，如 text, src
-  style: React.CSSProperties; // 样式属性，如 color, fontSize
-  children?: ComponentSchema[]; // 嵌套组件
+// 选项接口（用于单选、多选、下拉）
+export interface OptionItem {
+  label: string;
+  value: string;
 }
 
-// 状态管理器的类型定义
+// 核心：表单组件 Schema
+export interface ComponentSchema {
+  id: string;
+  type: FormItemType;
+  label: string; // 表单项的标题（如：“您的姓名”）
+  required: boolean; // 是否必填
+  props: {
+    placeholder?: string;
+    options?: OptionItem[]; // 给 radio 和 select 用的选项
+    buttonText?: string; // 按钮文字
+  };
+  // 留给未来的高级功能：逻辑联动表达式
+  visibleOn?: string; 
+}
+
 export interface EditorStore {
   components: ComponentSchema[];
   selectedId: string | null;
-  addComponent: (type: ComponentType) => void;
+  addComponent: (type: FormItemType) => void;
   selectComponent: (id: string | null) => void;
+  updateComponent: (id: string, updates: Partial<ComponentSchema>) => void;
   updateProps: (id: string, props: any) => void;
-  updateStyle: (id: string, style: React.CSSProperties) => void;
-  // 重新排序组件
-   reorderComponents: (oldIndex: number, newIndex: number) => void;
+  reorderComponents: (oldIndex: number, newIndex: number) => void; 
 }
