@@ -1,6 +1,40 @@
 @import "tailwindcss";
 
-/* 自定义主题颜色，现在直接在这里写 CSS 变量 */
+/* 自定义主题颜色 */
 @theme {
   --color-brand: #7C3AED;
+}
+
+/*  滚动条样式定制  */
+/* Firefox 浏览器基础适配 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #71717a transparent;
+}
+
+/* WebKit 内核浏览器 (Chrome, Edge, Safari) */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+/* 轨道完全透明 */
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* 滑块基础状态 */
+::-webkit-scrollbar-thumb {
+  background-color: #71717a;
+  border-radius: 3px;
+}
+
+/* 滑块悬停状态 */
+::-webkit-scrollbar-thumb:hover {
+  background-color: #52525b;
+}
+
+/* 滑块点击按下状态 */
+::-webkit-scrollbar-thumb:active {
+  background-color: #3f3f46;
 }

@@ -110,17 +110,19 @@ export default function GeneratedForm() {
           </div>
 
           {/* 右侧代码展示区 */}
-          <div className="flex-1 flex flex-col relative bg-[#1E1E1E]">
+          <div className="flex-1 flex flex-col relative bg-[#1E1E1E] min-h-0 min-w-0">
             <button 
               onClick={handleCopy}
-              className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-md flex items-center gap-1.5 text-xs transition-colors backdrop-blur-md"
+              className="absolute z-10 top-4 right-4 bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-md flex items-center gap-1.5 text-xs transition-colors backdrop-blur-md"
             >
               {copied ? <CheckCircle2 className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
               {copied ? '已复制' : '复制代码'}
             </button>
-            <pre className="p-6 overflow-auto text-[13px] font-mono text-gray-300 leading-relaxed h-full">
-              <code>{activeTab === 'json' ? jsonSchema : generateReactCode()}</code>
-            </pre>
+            <div className="flex-1 overflow-auto p-6 pt-16 w-full">
+              <pre className="text-[13px] font-mono text-gray-300 leading-relaxed overflow-x-auto">
+                <code>{activeTab === 'json' ? jsonSchema : generateReactCode()}</code>
+              </pre>
+            </div>
           </div>
         </div>
       </div>
