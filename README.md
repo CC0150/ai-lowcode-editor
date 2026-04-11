@@ -1,8 +1,8 @@
 # 🚀 AI Low-Code Form Engine (智能可视化表单引擎)
 
-![React](https://img.shields.io/badge/React-18.x-blue?style=flat-square&logo=react)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue?style=flat-square&logo=typescript)
-![Vite](https://img.shields.io/badge/Vite-5.x-purple?style=flat-square&logo=vite)
+![React](https://img.shields.io/badge/React-19.x-blue?style=flat-square&logo=react)
+![TypeScript](https://img.shields.io/badge/TypeScript-6.x-blue?style=flat-square&logo=typescript)
+![Vite](https://img.shields.io/badge/Vite-8.x-purple?style=flat-square&logo=vite)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-06B6D4?style=flat-square&logo=tailwind-css)
 ![Zustand](https://img.shields.io/badge/Zustand-State_Management-yellow?style=flat-square)
 
