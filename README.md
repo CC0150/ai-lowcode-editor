@@ -26,7 +26,7 @@
 
 ## 🛠️ 技术栈 (Tech Stack)
 
-- **框架:** React 18 (Functional Components + Hooks)
+- **框架:** React 19 (Functional Components + Hooks)
 - **构建工具:** Vite
 - **类型系统:** TypeScript
 - **状态管理:** Zustand (比 Redux 更轻量，完美契合 JSON 树更新)
