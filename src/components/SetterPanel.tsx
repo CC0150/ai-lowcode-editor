@@ -1,10 +1,9 @@
-import React from "react";
 import { useEditorStore } from "../store/useEditorStore";
 import { Plus, Trash2, Sparkles } from "lucide-react";
 
 export const SetterPanel = () => {
   // 从 Zustand 中获取所需状态和更新方法
-  const { components, selectedId, updateComponent, updateProps } =
+  const { components, selectedId, updateComponent, updateProps, deleteComponent } =
     useEditorStore();
 
   // 查找当前选中的组件
@@ -110,99 +109,70 @@ export const SetterPanel = () => {
 
       {/* ================= 控件专属属性区 ================= */}
       <section className="flex flex-col gap-4 border-t pt-5">
-        <h4 className="text-sm font-semibold text-brand border-l-2 border-brand pl-2">
-          控件设置
-        </h4>
-
-        {/* 输入框：占位符设置 */}
-        {selectedComponent.type === "input" && (
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs text-gray-600 font-medium">
-              占位提示文字 (Placeholder)
-            </label>
-            <input
-              type="text"
-              className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/50"
-              value={selectedComponent.props.placeholder || ""}
-              onChange={(e) =>
-                updateProps(selectedComponent.id, {
-                  placeholder: e.target.value,
-                })
-              }
-            />
-          </div>
+        <h4 className="text-sm font-semibold text-brand border-l-2 border-brand pl-2">控件设置</h4>
+        
+        {/* === 支持 Input 和 Textarea 的占位符与正则 === */}
+        {(selectedComponent.type === 'input' || selectedComponent.type === 'textarea') && (
+          <>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs text-gray-600 font-medium">占位提示文字 (Placeholder)</label>
+              <input
+                type="text"
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/50"
+                value={selectedComponent.props.placeholder || ''}
+                onChange={(e) => updateProps(selectedComponent.id, { placeholder: e.target.value })}
+              />
+            </div>
+            
+            <div className="flex flex-col gap-1.5 border-t border-gray-100 pt-3 mt-1">
+              <label className="text-xs text-brand font-bold flex items-center gap-1">正则表达式校验 (Regex)</label>
+              <input
+                type="text"
+                placeholder="例如: ^1[3-9]\d{9}$"
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm font-mono text-gray-700 bg-gray-50 focus:ring-2 focus:ring-brand/50"
+                value={selectedComponent.validation?.regex || ''}
+                onChange={(e) => updateComponent(selectedComponent.id, { validation: { regex: e.target.value, message: selectedComponent.validation?.message || '格式不正确' } })}
+              />
+            </div>
+            {selectedComponent.validation?.regex && (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] text-gray-500 font-medium uppercase">自定义错误提示语</label>
+                <input
+                  type="text"
+                  placeholder="例如: 请输入正确的手机号"
+                  className="border border-red-200 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-red-400"
+                  value={selectedComponent.validation?.message || ''}
+                  onChange={(e) => updateComponent(selectedComponent.id, { validation: { ...selectedComponent.validation!, message: e.target.value } })}
+                />
+              </div>
+            )}
+          </>
         )}
 
         {/* 按钮：文字设置 */}
-        {selectedComponent.type === "button" && (
+        {selectedComponent.type === 'button' && (
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs text-gray-600 font-medium">
-              按钮文字
-            </label>
-            <input
-              type="text"
-              className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/50"
-              value={selectedComponent.props.buttonText || ""}
-              onChange={(e) =>
-                updateProps(selectedComponent.id, {
-                  buttonText: e.target.value,
-                })
-              }
-            />
+            <label className="text-xs text-gray-600 font-medium">按钮文字</label>
+            <input type="text" className="border border-gray-300 rounded-md px-3 py-2 text-sm" value={selectedComponent.props.buttonText || ''} onChange={(e) => updateProps(selectedComponent.id, { buttonText: e.target.value })} />
           </div>
         )}
 
-        {/* ================= 单选/下拉的选项管理器 ================= */}
-        {(selectedComponent.type === "radio" ||
-          selectedComponent.type === "select") && (
+        {/* === 单选、多选、下拉的选项管理器 === */}
+        {(selectedComponent.type === 'radio' || selectedComponent.type === 'select' || selectedComponent.type === 'checkbox') && (
           <div className="flex flex-col gap-3">
-            <label className="text-xs text-gray-600 font-medium">
-              选项列表 (Options)
-            </label>
-
+            <label className="text-xs text-gray-600 font-medium">选项列表 (Options)</label>
             <div className="flex flex-col gap-2">
               {options.map((opt, index) => (
-                <div
-                  key={index}
-                  className="flex items-center gap-2 bg-gray-50 p-2 rounded-md border border-gray-200"
-                >
+                <div key={index} className="flex items-center gap-2 bg-gray-50 p-2 rounded-md border border-gray-200">
                   <div className="flex-1 flex flex-col gap-1.5">
-                    <input
-                      type="text"
-                      className="w-full border-gray-300 border rounded px-2 py-1 text-xs outline-none focus:border-brand"
-                      placeholder="选项显示文本"
-                      value={opt.label}
-                      onChange={(e) =>
-                        handleOptionChange(index, "label", e.target.value)
-                      }
-                    />
-                    <input
-                      type="text"
-                      className="w-full border-gray-300 border rounded px-2 py-1 text-[10px] text-gray-500 font-mono outline-none focus:border-brand"
-                      placeholder="提交值 (Value)"
-                      value={opt.value}
-                      onChange={(e) =>
-                        handleOptionChange(index, "value", e.target.value)
-                      }
-                    />
+                    <input type="text" className="w-full border-gray-300 border rounded px-2 py-1 text-xs outline-none focus:border-brand" placeholder="选项显示文本" value={opt.label} onChange={(e) => handleOptionChange(index, 'label', e.target.value)} />
+                    <input type="text" className="w-full border-gray-300 border rounded px-2 py-1 text-[10px] text-gray-500 font-mono outline-none focus:border-brand" placeholder="提交值 (Value)" value={opt.value} onChange={(e) => handleOptionChange(index, 'value', e.target.value)} />
                   </div>
-                  <button
-                    onClick={() => handleRemoveOption(index)}
-                    className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
-                    title="删除选项"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <button onClick={() => handleRemoveOption(index)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md"><Trash2 className="w-4 h-4" /></button>
                 </div>
               ))}
             </div>
-
-            <button
-              onClick={handleAddOption}
-              className="mt-2 flex items-center justify-center gap-1 w-full py-2 border border-dashed border-brand text-brand rounded-md text-sm hover:bg-brand/5 transition-colors font-medium"
-            >
-              <Plus className="w-4 h-4" /> 添加新选项
-            </button>
+            <button onClick={handleAddOption} className="mt-2 flex items-center justify-center gap-1 w-full py-2 border border-dashed border-brand text-brand rounded-md text-sm hover:bg-brand/5"><Plus className="w-4 h-4" /> 添加新选项</button>
           </div>
         )}
       </section>
@@ -268,6 +238,16 @@ export const SetterPanel = () => {
           </div>
         </section>
       )}
+
+      {/* ================= 危险操作区 ================= */}
+      <div className="mt-8 pt-4 border-t border-gray-200">
+        <button
+          onClick={() => deleteComponent(selectedComponent.id)}
+          className="w-full py-2.5 flex items-center justify-center gap-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-md font-medium text-sm transition-colors"
+        >
+          <Trash2 className="w-4 h-4" /> 彻底删除该组件
+        </button>
+      </div>
     </div>
   );
 };

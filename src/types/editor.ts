@@ -1,5 +1,5 @@
 // 表单专用的组件类型
-export type FormItemType = "input" | "textarea" | "radio" | "select" | "button";
+export type FormItemType = "input" | "textarea" | "radio" | "select" | "button" | "date" | "checkbox";
 
 // 选项接口（用于单选、多选、下拉）
 export interface OptionItem {
@@ -14,7 +14,13 @@ export interface VisibleRule {
   value: string; // 期望的值
 }
 
-// 核心：表单组件 Schema
+// 正则校验规则接口
+export interface ValidationRule {
+  regex: string;      // 正则表达式字符串，如 "^1[3-9]\\d{9}$"
+  message: string;    // 校验失败时的错误提示，如 "请输入正确的手机号"
+}
+
+// 表单组件 Schema
 export interface ComponentSchema {
   id: string;
   type: FormItemType;
@@ -25,16 +31,29 @@ export interface ComponentSchema {
     options?: OptionItem[]; // 给 radio 和 select 用的选项
     buttonText?: string; // 按钮文字
   };
-  // 留给未来的高级功能：逻辑联动表达式
+  // 逻辑联动表达式
   visibleRule?: VisibleRule;
+  // 正则校验表达式
+  validation?: ValidationRule;
 }
 
 export interface EditorStore {
+  // 历史栈
+  past: ComponentSchema[][];
+  future: ComponentSchema[][];
+  // 当前组件列表
   components: ComponentSchema[];
+  // 选中的组件 ID
   selectedId: string | null;
+
   addComponent: (type: FormItemType) => void;
   selectComponent: (id: string | null) => void;
   updateComponent: (id: string, updates: Partial<ComponentSchema>) => void;
   updateProps: (id: string, props: any) => void;
   reorderComponents: (oldIndex: number, newIndex: number) => void;
+  deleteComponent: (id: string) => void;
+  
+  // 历史记录方法
+  undo: () => void;
+  redo: () => void;
 }

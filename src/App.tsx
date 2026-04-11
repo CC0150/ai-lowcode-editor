@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useEditorStore } from './store/useEditorStore';
 import { SetterPanel } from './components/SetterPanel';
 import { SortableWrapper } from './components/SortableWrapper';
 import {
   Type, CheckCircle2, List, MousePointer2, Box,
-  PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen
+  PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Undo2, Redo2, AlignLeft, CheckSquare, Calendar
 } from 'lucide-react';
 import { ExportModal } from './components/ExportModal';
 
@@ -23,7 +23,7 @@ import { FormPreview } from './components/FormPreview';
 
 export default function App() {
   // 从全局 Zustand store 中获取状态和方法
-  const { components, addComponent, selectedId, selectComponent, reorderComponents } = useEditorStore();
+  const { components, addComponent, selectedId, selectComponent, reorderComponents, past, future, undo, redo } = useEditorStore();
 
   // 控制左右侧边栏的折叠状态
   const [leftOpen, setLeftOpen] = useState(true);
@@ -48,6 +48,31 @@ export default function App() {
     }
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // 避免在输入框打字时触发撤销
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        if (e.shiftKey) {
+          e.preventDefault();
+          redo(); // Ctrl+Shift+Z 重做
+        } else {
+          e.preventDefault();
+          undo(); // Ctrl+Z 撤销
+        }
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        redo(); // Ctrl+Y 重做
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [undo, redo]);
+
   return (
     <div className="h-screen w-full flex flex-col bg-gray-50 overflow-hidden font-sans text-slate-800">
       {/* ---------- 顶部导航 ---------- */}
@@ -64,6 +89,26 @@ export default function App() {
           </div>
         </div>
         <div className="flex items-center gap-4">
+          {/* === 新增：历史记录操作区 === */}
+          <div className="flex items-center gap-1 border-r border-gray-200 pr-4 mr-1">
+            <button
+              onClick={undo}
+              disabled={past.length === 0}
+              className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-md transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              title="撤销 (Ctrl+Z)"
+            >
+              <Undo2 className="w-[18px] h-[18px]" />
+            </button>
+            <button
+              onClick={redo}
+              disabled={future.length === 0}
+              className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-md transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              title="重做 (Ctrl+Y 或 Ctrl+Shift+Z)"
+            >
+              <Redo2 className="w-[18px] h-[18px]" />
+            </button>
+          </div>
+
           <button
             onClick={() => setIsExporting(true)}
             className="text-brand bg-brand/10 px-4 py-1.5 rounded-md text-sm font-medium hover:bg-brand/20 transition-colors"
@@ -92,8 +137,11 @@ export default function App() {
             <div className="grid grid-cols-2 gap-3">
               {[
                 { type: 'input', icon: Type, label: '单行文本' },
+                { type: 'textarea', icon: AlignLeft, label: '多行文本' },
                 { type: 'radio', icon: CheckCircle2, label: '单项选择' },
+                { type: 'checkbox', icon: CheckSquare, label: '多项选择' },
                 { type: 'select', icon: List, label: '下拉选择' },
+                { type: 'date', icon: Calendar, label: '日期选择' },
                 { type: 'button', icon: MousePointer2, label: '提交按钮' },
               ].map((item) => (
                 <button
@@ -182,6 +230,21 @@ export default function App() {
                           {comp.props.buttonText}
                         </button>
                       )}
+
+                      {comp.type === 'textarea' && <textarea placeholder={comp.props.placeholder} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-gray-50 resize-none h-20" readOnly />}
+
+                      {comp.type === 'checkbox' && (
+                        <div className="flex flex-col gap-2 mt-1">
+                          {comp.props.options?.map((opt, i) => (
+                            <div key={i} className="flex items-center gap-2">
+                              <input type="checkbox" className="w-4 h-4 text-brand rounded" readOnly />
+                              <span className="text-sm text-gray-600">{opt.label}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {comp.type === 'date' && <input type="date" className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-gray-50" readOnly />}
                     </div>
                   </SortableWrapper>
                 ))}
