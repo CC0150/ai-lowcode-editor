@@ -2,10 +2,13 @@ import React, { useState } from 'react';
 import { useEditorStore } from './store/useEditorStore';
 import { SetterPanel } from './components/SetterPanel';
 import { SortableWrapper } from './components/SortableWrapper';
-import { 
+import {
   Type, CheckCircle2, List, MousePointer2, Box,
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen
 } from 'lucide-react';
+import { ExportModal } from './components/ExportModal';
+
+
 
 import {
   DndContext,
@@ -21,13 +24,16 @@ import { FormPreview } from './components/FormPreview';
 export default function App() {
   // 从全局 Zustand store 中获取状态和方法
   const { components, addComponent, selectedId, selectComponent, reorderComponents } = useEditorStore();
-  
+
   // 控制左右侧边栏的折叠状态
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
 
   // 控制预览模式的打开状态
   const [isPreview, setIsPreview] = useState(false);
+
+  // 控制导出模式的打开状态
+  const [isExporting, setIsExporting] = useState(false);
 
   // 配置拖拽传感器：鼠标移动 5 像素才被认为是拖拽，防止和点击选中事件冲突
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
@@ -46,32 +52,39 @@ export default function App() {
     <div className="h-screen w-full flex flex-col bg-gray-50 overflow-hidden font-sans text-slate-800">
       {/* ---------- 顶部导航 ---------- */}
       <header className="h-14 border-b border-gray-200 bg-white flex items-center px-4 justify-between z-20 shadow-sm relative">
-         <div className="flex items-center gap-4">
-           <button onClick={() => setLeftOpen(!leftOpen)} className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-md transition-colors">
-             {leftOpen ? <PanelLeftClose className="w-5 h-5" /> : <PanelLeftOpen className="w-5 h-5" />}
-           </button>
-           <div className="flex items-center gap-2">
+        <div className="flex items-center gap-4">
+          <button onClick={() => setLeftOpen(!leftOpen)} className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-md transition-colors">
+            {leftOpen ? <PanelLeftClose className="w-5 h-5" /> : <PanelLeftOpen className="w-5 h-5" />}
+          </button>
+          <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded bg-brand flex items-center justify-center">
               <Box className="w-4 h-4 text-white" />
             </div>
             <h1 className="font-bold text-lg text-gray-800">表单引擎 Pro</h1>
           </div>
-         </div>
-         <div className="flex items-center gap-4">
-           <button onClick={() => setIsPreview(true)} className="bg-brand text-white px-4 py-1.5 rounded-md text-sm font-medium hover:bg-brand/90 transition-colors shadow-sm">
-             预览表单
-           </button>
-           <button onClick={() => setRightOpen(!rightOpen)} className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-md transition-colors">
-             {rightOpen ? <PanelRightClose className="w-5 h-5" /> : <PanelRightOpen className="w-5 h-5" />}
-           </button>
-         </div>
+        </div>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => setIsExporting(true)}
+            className="text-brand bg-brand/10 px-4 py-1.5 rounded-md text-sm font-medium hover:bg-brand/20 transition-colors"
+          >
+            导出代码
+          </button>
+          <button onClick={() => setIsPreview(true)} className="bg-brand text-white px-4 py-1.5 rounded-md text-sm font-medium hover:bg-brand/90 transition-colors shadow-sm">
+            预览表单
+          </button>
+          <button onClick={() => setRightOpen(!rightOpen)} className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-md transition-colors">
+            {rightOpen ? <PanelRightClose className="w-5 h-5" /> : <PanelRightOpen className="w-5 h-5" />}
+          </button>
+        </div>
       </header>
 
       {/* ---------- 主体区域 ---------- */}
       <main className="flex-1 flex overflow-hidden relative">
         {/* 如果处于预览模式，直接渲染预览组件并覆盖整个区域 */}
-        {isPreview && <FormPreview onBack={() => setIsPreview(false)} />} 
-        
+        {isPreview && <FormPreview onBack={() => setIsPreview(false)} />}
+        {isExporting && <ExportModal onClose={() => setIsExporting(false)} />}
+
         {/* === 左侧物料区 === */}
         <aside className={`transition-all duration-300 ease-in-out border-r border-gray-200 bg-white flex flex-col overflow-hidden ${leftOpen ? 'w-64 opacity-100' : 'w-0 border-r-0 opacity-0'}`}>
           <div className="w-64 p-4 overflow-y-auto">
@@ -97,12 +110,12 @@ export default function App() {
         </aside>
 
         {/* === 中间画布区 === */}
-        <section 
-          className="flex-1 bg-gray-100 p-8 overflow-auto flex items-start justify-center transition-all duration-300" 
+        <section
+          className="flex-1 bg-gray-100 p-8 overflow-auto flex items-start justify-center transition-all duration-300"
           onClick={() => selectComponent(null)} // 点击画布空白处取消选中
         >
-          <div 
-            className="w-full max-w-2xl bg-white shadow-xl rounded-xl min-h-[600px] p-10 ring-1 ring-gray-200/50" 
+          <div
+            className="w-full max-w-2xl bg-white shadow-xl rounded-xl min-h-[600px] p-10 ring-1 ring-gray-200/50"
             onClick={(e) => e.stopPropagation()}
           >
             {/* 表单静态页头 */}
@@ -115,37 +128,37 @@ export default function App() {
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={components.map(c => c.id)} strategy={verticalListSortingStrategy}>
                 {components.map((comp, index) => (
-                  <SortableWrapper 
-                    key={comp.id} 
-                    id={comp.id} 
-                    isSelected={selectedId === comp.id} 
-                    onClick={(e) => { 
-                      e.stopPropagation(); 
-                      selectComponent(comp.id); 
+                  <SortableWrapper
+                    key={comp.id}
+                    id={comp.id}
+                    isSelected={selectedId === comp.id}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      selectComponent(comp.id);
                     }}
                   >
                     {/* --- 表单引擎核心渲染器 --- */}
                     {/* pointer-events-none 的作用是防止内部的 input 抢夺鼠标的拖拽焦点 */}
                     <div className="flex flex-col gap-2 pointer-events-none">
-                      
+
                       {/* 统一渲染标题 (Label) 和必填星号 */}
                       {comp.type !== 'button' && (
                         <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
-                          {index + 1}. {comp.label} 
+                          {index + 1}. {comp.label}
                           {comp.required && <span className="text-red-500">*</span>}
                         </label>
                       )}
 
                       {/* 根据组件类型动态渲染控件 */}
                       {comp.type === 'input' && (
-                        <input 
-                          type="text" 
-                          placeholder={comp.props.placeholder} 
-                          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-gray-50" 
-                          readOnly 
+                        <input
+                          type="text"
+                          placeholder={comp.props.placeholder}
+                          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-gray-50"
+                          readOnly
                         />
                       )}
-                      
+
                       {comp.type === 'radio' && (
                         <div className="flex flex-col gap-2 mt-1">
                           {comp.props.options?.map((opt, i) => (
