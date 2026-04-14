@@ -1,14 +1,25 @@
-import { useEffect, useState } from 'react';
-import { useEditorStore } from './store/useEditorStore';
-import { SetterPanel } from './components/SetterPanel';
-import { SortableWrapper } from './components/SortableWrapper';
+import { useEffect, useState } from "react";
+import { useEditorStore } from "./store/useEditorStore";
+import { SetterPanel } from "./components/SetterPanel";
+import { SortableWrapper } from "./components/SortableWrapper";
 import {
-  Type, CheckCircle2, List, MousePointer2, Box,
-  PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Undo2, Redo2, AlignLeft, CheckSquare, Calendar
-} from 'lucide-react';
-import { ExportModal } from './components/ExportModal';
-
-
+  Type,
+  CheckCircle2,
+  List,
+  MousePointer2,
+  Box,
+  PanelLeftClose,
+  PanelLeftOpen,
+  PanelRightClose,
+  PanelRightOpen,
+  Undo2,
+  Redo2,
+  AlignLeft,
+  CheckSquare,
+  Calendar,
+} from "lucide-react";
+import { ExportModal } from "./components/ExportModal";
+import { AIGenerator } from "./components/AIGenerator";
 
 import {
   DndContext,
@@ -17,13 +28,26 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
-} from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { FormPreview } from './components/FormPreview';
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { FormPreview } from "./components/FormPreview";
 
 export default function App() {
   // 从全局 Zustand store 中获取状态和方法
-  const { components, addComponent, selectedId, selectComponent, reorderComponents, past, future, undo, redo } = useEditorStore();
+  const {
+    components,
+    addComponent,
+    selectedId,
+    selectComponent,
+    reorderComponents,
+    past,
+    future,
+    undo,
+    redo,
+  } = useEditorStore();
 
   // 控制左右侧边栏的折叠状态
   const [leftOpen, setLeftOpen] = useState(true);
@@ -36,7 +60,9 @@ export default function App() {
   const [isExporting, setIsExporting] = useState(false);
 
   // 配置拖拽传感器：鼠标移动 5 像素才被认为是拖拽，防止和点击选中事件冲突
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  );
 
   // 处理拖拽排序结束事件
   const handleDragEnd = (event: DragEndEvent) => {
@@ -51,11 +77,14 @@ export default function App() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // 避免在输入框打字时触发撤销
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      ) {
         return;
       }
 
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
         if (e.shiftKey) {
           e.preventDefault();
           redo(); // Ctrl+Shift+Z 重做
@@ -63,14 +92,14 @@ export default function App() {
           e.preventDefault();
           undo(); // Ctrl+Z 撤销
         }
-      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "y") {
         e.preventDefault();
         redo(); // Ctrl+Y 重做
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [undo, redo]);
 
   return (
@@ -78,8 +107,15 @@ export default function App() {
       {/* ---------- 顶部导航 ---------- */}
       <header className="h-14 border-b border-gray-200 bg-white flex items-center px-4 justify-between z-20 shadow-sm relative">
         <div className="flex items-center gap-4">
-          <button onClick={() => setLeftOpen(!leftOpen)} className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-md transition-colors">
-            {leftOpen ? <PanelLeftClose className="w-5 h-5" /> : <PanelLeftOpen className="w-5 h-5" />}
+          <button
+            onClick={() => setLeftOpen(!leftOpen)}
+            className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-md transition-colors"
+          >
+            {leftOpen ? (
+              <PanelLeftClose className="w-5 h-5" />
+            ) : (
+              <PanelLeftOpen className="w-5 h-5" />
+            )}
           </button>
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded bg-brand flex items-center justify-center">
@@ -115,11 +151,21 @@ export default function App() {
           >
             导出代码
           </button>
-          <button onClick={() => setIsPreview(true)} className="bg-brand text-white px-4 py-1.5 rounded-md text-sm font-medium hover:bg-brand/90 transition-colors shadow-sm">
+          <button
+            onClick={() => setIsPreview(true)}
+            className="bg-brand text-white px-4 py-1.5 rounded-md text-sm font-medium hover:bg-brand/90 transition-colors shadow-sm"
+          >
             预览表单
           </button>
-          <button onClick={() => setRightOpen(!rightOpen)} className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-md transition-colors">
-            {rightOpen ? <PanelRightClose className="w-5 h-5" /> : <PanelRightOpen className="w-5 h-5" />}
+          <button
+            onClick={() => setRightOpen(!rightOpen)}
+            className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-md transition-colors"
+          >
+            {rightOpen ? (
+              <PanelRightClose className="w-5 h-5" />
+            ) : (
+              <PanelRightOpen className="w-5 h-5" />
+            )}
           </button>
         </div>
       </header>
@@ -131,18 +177,23 @@ export default function App() {
         {isExporting && <ExportModal onClose={() => setIsExporting(false)} />}
 
         {/* === 左侧物料区 === */}
-        <aside className={`transition-all duration-300 ease-in-out border-r border-gray-200 bg-white flex flex-col overflow-hidden ${leftOpen ? 'w-64 opacity-100' : 'w-0 border-r-0 opacity-0'}`}>
+        <aside
+          className={`transition-all duration-300 ease-in-out border-r border-gray-200 bg-white flex flex-col overflow-hidden ${leftOpen ? "w-64 opacity-100" : "w-0 border-r-0 opacity-0"}`}
+        >
+          <AIGenerator />
           <div className="w-64 p-4 overflow-y-auto">
-            <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">表单组件</h2>
+            <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
+              表单组件
+            </h2>
             <div className="grid grid-cols-2 gap-3">
               {[
-                { type: 'input', icon: Type, label: '单行文本' },
-                { type: 'textarea', icon: AlignLeft, label: '多行文本' },
-                { type: 'radio', icon: CheckCircle2, label: '单项选择' },
-                { type: 'checkbox', icon: CheckSquare, label: '多项选择' },
-                { type: 'select', icon: List, label: '下拉选择' },
-                { type: 'date', icon: Calendar, label: '日期选择' },
-                { type: 'button', icon: MousePointer2, label: '提交按钮' },
+                { type: "input", icon: Type, label: "单行文本" },
+                { type: "textarea", icon: AlignLeft, label: "多行文本" },
+                { type: "radio", icon: CheckCircle2, label: "单项选择" },
+                { type: "checkbox", icon: CheckSquare, label: "多项选择" },
+                { type: "select", icon: List, label: "下拉选择" },
+                { type: "date", icon: Calendar, label: "日期选择" },
+                { type: "button", icon: MousePointer2, label: "提交按钮" },
               ].map((item) => (
                 <button
                   key={item.type}
@@ -150,7 +201,9 @@ export default function App() {
                   className="flex flex-col items-center justify-center p-3 border border-gray-200 rounded-lg hover:border-brand hover:text-brand bg-gray-50 hover:bg-white transition-all group shadow-sm"
                 >
                   <item.icon className="w-5 h-5 mb-2 text-gray-500 group-hover:text-brand" />
-                  <span className="text-xs font-medium text-gray-600 group-hover:text-brand">{item.label}</span>
+                  <span className="text-xs font-medium text-gray-600 group-hover:text-brand">
+                    {item.label}
+                  </span>
                 </button>
               ))}
             </div>
@@ -168,13 +221,24 @@ export default function App() {
           >
             {/* 表单静态页头 */}
             <div className="border-b-2 border-gray-100 pb-4 mb-8">
-              <h1 className="text-2xl font-bold text-center text-gray-800">用户调研问卷</h1>
-              <p className="text-gray-500 text-sm text-center mt-2">请如实填写以下信息</p>
+              <h1 className="text-2xl font-bold text-center text-gray-800">
+                用户调研问卷
+              </h1>
+              <p className="text-gray-500 text-sm text-center mt-2">
+                请如实填写以下信息
+              </p>
             </div>
 
             {/* 拖拽排序上下文 */}
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-              <SortableContext items={components.map(c => c.id)} strategy={verticalListSortingStrategy}>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={components.map((c) => c.id)}
+                strategy={verticalListSortingStrategy}
+              >
                 {components.map((comp, index) => (
                   <SortableWrapper
                     key={comp.id}
@@ -188,17 +252,18 @@ export default function App() {
                     {/* --- 表单引擎核心渲染器 --- */}
                     {/* pointer-events-none 的作用是防止内部的 input 抢夺鼠标的拖拽焦点 */}
                     <div className="flex flex-col gap-2 pointer-events-none">
-
                       {/* 统一渲染标题 (Label) 和必填星号 */}
-                      {comp.type !== 'button' && (
+                      {comp.type !== "button" && (
                         <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
                           {index + 1}. {comp.label}
-                          {comp.required && <span className="text-red-500">*</span>}
+                          {comp.required && (
+                            <span className="text-red-500">*</span>
+                          )}
                         </label>
                       )}
 
                       {/* 根据组件类型动态渲染控件 */}
-                      {comp.type === 'input' && (
+                      {comp.type === "input" && (
                         <input
                           type="text"
                           placeholder={comp.props.placeholder}
@@ -207,44 +272,73 @@ export default function App() {
                         />
                       )}
 
-                      {comp.type === 'radio' && (
+                      {comp.type === "radio" && (
                         <div className="flex flex-col gap-2 mt-1">
                           {comp.props.options?.map((opt, i) => (
                             <div key={i} className="flex items-center gap-2">
-                              <input type="radio" className="w-4 h-4 text-brand" readOnly />
-                              <span className="text-sm text-gray-600">{opt.label}</span>
+                              <input
+                                type="radio"
+                                className="w-4 h-4 text-brand"
+                                readOnly
+                              />
+                              <span className="text-sm text-gray-600">
+                                {opt.label}
+                              </span>
                             </div>
                           ))}
                         </div>
                       )}
 
-                      {comp.type === 'select' && (
-                        <select className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-gray-50" disabled>
+                      {comp.type === "select" && (
+                        <select
+                          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-gray-50"
+                          disabled
+                        >
                           <option>请选择...</option>
-                          {comp.props.options?.map((opt, i) => <option key={i}>{opt.label}</option>)}
+                          {comp.props.options?.map((opt, i) => (
+                            <option key={i}>{opt.label}</option>
+                          ))}
                         </select>
                       )}
 
-                      {comp.type === 'button' && (
+                      {comp.type === "button" && (
                         <button className="w-full bg-brand text-white py-2.5 rounded-md font-medium mt-4 shadow-sm">
                           {comp.props.buttonText}
                         </button>
                       )}
 
-                      {comp.type === 'textarea' && <textarea placeholder={comp.props.placeholder} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-gray-50 resize-none h-20" readOnly />}
+                      {comp.type === "textarea" && (
+                        <textarea
+                          placeholder={comp.props.placeholder}
+                          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-gray-50 resize-none h-20"
+                          readOnly
+                        />
+                      )}
 
-                      {comp.type === 'checkbox' && (
+                      {comp.type === "checkbox" && (
                         <div className="flex flex-col gap-2 mt-1">
                           {comp.props.options?.map((opt, i) => (
                             <div key={i} className="flex items-center gap-2">
-                              <input type="checkbox" className="w-4 h-4 text-brand rounded" readOnly />
-                              <span className="text-sm text-gray-600">{opt.label}</span>
+                              <input
+                                type="checkbox"
+                                className="w-4 h-4 text-brand rounded"
+                                readOnly
+                              />
+                              <span className="text-sm text-gray-600">
+                                {opt.label}
+                              </span>
                             </div>
                           ))}
                         </div>
                       )}
 
-                      {comp.type === 'date' && <input type="date" className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-gray-50" readOnly />}
+                      {comp.type === "date" && (
+                        <input
+                          type="date"
+                          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-gray-50"
+                          readOnly
+                        />
+                      )}
                     </div>
                   </SortableWrapper>
                 ))}
@@ -261,7 +355,9 @@ export default function App() {
         </section>
 
         {/* === 右侧配置区 === */}
-        <aside className={`transition-all duration-300 ease-in-out border-l border-gray-200 bg-white shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.05)] z-10 overflow-hidden ${rightOpen ? 'w-80 opacity-100' : 'w-0 border-l-0 opacity-0'}`}>
+        <aside
+          className={`transition-all duration-300 ease-in-out border-l border-gray-200 bg-white shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.05)] z-10 overflow-hidden ${rightOpen ? "w-80 opacity-100" : "w-0 border-l-0 opacity-0"}`}
+        >
           <div className="w-80 h-full overflow-y-auto">
             <SetterPanel />
           </div>

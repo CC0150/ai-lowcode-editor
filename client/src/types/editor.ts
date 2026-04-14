@@ -1,5 +1,12 @@
 // 表单专用的组件类型
-export type FormItemType = "input" | "textarea" | "radio" | "select" | "button" | "date" | "checkbox";
+export type FormItemType =
+  | "input"
+  | "textarea"
+  | "radio"
+  | "select"
+  | "button"
+  | "date"
+  | "checkbox";
 
 // 选项接口（用于单选、多选、下拉）
 export interface OptionItem {
@@ -16,8 +23,8 @@ export interface VisibleRule {
 
 // 正则校验规则接口
 export interface ValidationRule {
-  regex: string;      // 正则表达式字符串，如 "^1[3-9]\\d{9}$"
-  message: string;    // 校验失败时的错误提示，如 "请输入正确的手机号"
+  regex: string; // 正则表达式字符串，如 "^1[3-9]\\d{9}$"
+  message: string; // 校验失败时的错误提示，如 "请输入正确的手机号"
 }
 
 // 表单组件 Schema
@@ -52,8 +59,11 @@ export interface EditorStore {
   updateProps: (id: string, props: any) => void;
   reorderComponents: (oldIndex: number, newIndex: number) => void;
   deleteComponent: (id: string) => void;
-  
+
   // 历史记录方法
   undo: () => void;
   redo: () => void;
+
+  // AI 生成组件
+  applyAIGenerated: (newComponents: ComponentSchema[]) => void;
 }
