@@ -57,6 +57,63 @@ interface ComponentSchema {
 例如：{ "components": [ { "id": "name", "type": "input", "label": "姓名", "required": true, "props": { "placeholder": "请输入姓名" } } ] }
 不要输出任何解释性文字或 Markdown 标记。
 `;
+// 1. 局部组件 AI 修改接口
+app.post("/api/modify-component", async (req, res) => {
+  const { component, prompt } = req.body;
+  if (!component || !prompt) return res.status(400).json({ error: "参数缺失" });
+
+  const MODIFY_PROMPT = `你是一个低代码前端专家。
+现在有一个正在编辑的表单组件的 JSON 数据：
+${JSON.stringify(component)}
+
+用户的修改需求是："${prompt}"
+
+请你根据需求，精准修改并更新这个 JSON 中的属性（例如 label, props.placeholder, props.options 等），不要修改它的 id。
+如果用户要求修改选项(如改成四大名著、民族等)，请直接重写 props.options 数组。
+请直接返回修改后的完整 JSON 对象，不要包含任何 markdown 或解释文字。`;
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "deepseek-chat",
+      messages: [{ role: "user", content: MODIFY_PROMPT }],
+      response_format: { type: "json_object" },
+    });
+    res.json({
+      success: true,
+      data: JSON.parse(completion?.choices?.[0]?.message?.content || "{}"),
+    });
+  } catch (error) {
+    res.status(500).json({ error: "AI 修改失败" });
+  }
+});
+
+// 2. AI 智能正则校验接口
+app.post("/api/generate-regex", async (req, res) => {
+  const { prompt } = req.body;
+  if (!prompt) return res.status(400).json({ error: "参数缺失" });
+
+  const REGEX_PROMPT = `你是一个正则表达式专家。
+请根据用户的需求，生成对应的 JavaScript 正则表达式，以及校验失败时的中文提示语。
+用户需求："${prompt}"
+必须严格输出为一个 JSON 对象，包含 "regex" 和 "message" 两个字段。
+例如：{"regex": "^[a-zA-Z0-9]+$", "message": "必须包含大小写字母和数字"}
+注意：regex 字段的内容应该是一个合法的正则字符串，不需要前后的斜杠 /。
+不要包含任何 markdown 或解释文字。`;
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "deepseek-chat",
+      messages: [{ role: "user", content: REGEX_PROMPT }],
+      response_format: { type: "json_object" },
+    });
+    res.json({
+      success: true,
+      data: JSON.parse(completion?.choices?.[0]?.message?.content || "{}"),
+    });
+  } catch (error) {
+    res.status(500).json({ error: "AI 生成正则失败" });
+  }
+});
 
 app.post("/api/generate-form", async (req, res) => {
   const { prompt } = req.body;

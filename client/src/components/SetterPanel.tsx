@@ -1,13 +1,123 @@
-import { useEditorStore } from '../store/useEditorStore';
-import { Trash2, Settings2, GitBranch, ShieldCheck, BoxSelect, Upload, Star, ToggleLeft, MousePointer2, Sliders } from 'lucide-react';
-import { PanelSection } from './PanelSection';
-import { OptionsEditor } from './OptionsEditor';
+import { useState, useEffect, useRef } from "react";
+import { useEditorStore } from "../store/useEditorStore";
+import {
+  Trash2,
+  Settings2,
+  GitBranch,
+  ShieldCheck,
+  BoxSelect,
+  Upload,
+  Star,
+  ToggleLeft,
+  MousePointer2,
+  Sliders,
+  Sparkles,
+  Wand2,
+  Loader2,
+} from "lucide-react";
+import { PanelSection } from "./PanelSection";
+import { OptionsEditor } from "./OptionsEditor";
+import { message } from "antd";
 
 export const SetterPanel = () => {
-  const { components, selectedId, updateComponent, updateProps, deleteComponent } = useEditorStore();
+  const {
+    components,
+    selectedId,
+    updateComponent,
+    updateProps,
+    deleteComponent,
+  } = useEditorStore();
   const selectedComponent = components.find((c) => c.id === selectedId);
 
-  const inputBaseStyle = "w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 transition-all placeholder:text-slate-400 hover:border-slate-300 focus:bg-white focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none shadow-sm";
+  // --- AI Copilot 状态 ---
+  const [isCopilotOpen, setIsCopilotOpen] = useState(false);
+  const [copilotPrompt, setCopilotPrompt] = useState("");
+  const [isCopilotLoading, setIsCopilotLoading] = useState(false);
+  const copilotInputRef = useRef<HTMLInputElement>(null);
+
+  // --- AI Regex 状态 ---
+  const [isRegexAIOpen, setIsRegexAIOpen] = useState(false);
+  const [regexPrompt, setRegexPrompt] = useState("");
+  const [isRegexLoading, setIsRegexLoading] = useState(false);
+
+  // 快捷键监听：选中组件时，按 Ctrl+I 唤醒局部 AI
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        e.key.toLowerCase() === "i" &&
+        selectedId
+      ) {
+        e.preventDefault();
+        setIsCopilotOpen(true);
+        setTimeout(() => copilotInputRef.current?.focus(), 50);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedId]);
+
+  // 局部修改请求逻辑
+  const handleModifyComponent = async () => {
+    if (!copilotPrompt.trim() || !selectedComponent) return;
+    setIsCopilotLoading(true);
+    try {
+      const res = await fetch("http://localhost:3001/api/modify-component", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          component: selectedComponent,
+          prompt: copilotPrompt,
+        }),
+      });
+      const result = await res.json();
+      if (result.success && result.data) {
+        // 全量覆盖当前组件（保留原 ID 即可）
+        updateComponent(selectedComponent.id, result.data);
+        message.success("AI 修改成功 ✨");
+        setCopilotPrompt("");
+        setIsCopilotOpen(false);
+      } else {
+        message.error("AI 修改失败");
+      }
+    } catch (e) {
+      message.error("请求失败，请检查服务");
+    } finally {
+      setIsCopilotLoading(false);
+    }
+  };
+
+  // 正则生成请求逻辑
+  const handleGenerateRegex = async () => {
+    if (!regexPrompt.trim() || !selectedComponent) return;
+    setIsRegexLoading(true);
+    try {
+      const res = await fetch("http://localhost:3001/api/generate-regex", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: regexPrompt }),
+      });
+      const result = await res.json();
+      if (result.success && result.data) {
+        updateComponent(selectedComponent.id, {
+          validation: {
+            regex: result.data.regex,
+            message: result.data.message,
+          },
+        });
+        message.success("正则配置已应用");
+        setRegexPrompt("");
+        setIsRegexAIOpen(false);
+      }
+    } catch (e) {
+      message.error("正则生成失败");
+    } finally {
+      setIsRegexLoading(false);
+    }
+  };
+
+  const inputBaseStyle =
+    "w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 transition-all placeholder:text-slate-400 hover:border-slate-300 focus:bg-white focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none shadow-sm";
 
   if (!selectedComponent) {
     return (
@@ -23,49 +133,118 @@ export const SetterPanel = () => {
     );
   }
 
-  const dependencyOptions = components.filter(c => c.id !== selectedComponent.id && c.type !== 'button');
+  const dependencyOptions = components.filter(
+    (c) => c.id !== selectedComponent.id && c.type !== "button",
+  );
 
   return (
-    <div className="h-full flex flex-col bg-slate-50">
-      {/*  顶部固定 Header  */}
+    <div className="h-full flex flex-col bg-slate-50 relative">
       <header className="shrink-0 px-5 py-4 border-b border-slate-200 bg-white z-10 flex items-center justify-between shadow-sm">
         <div className="flex flex-col">
           <h3 className="font-bold text-slate-800">属性面板</h3>
         </div>
-
-        <div className="flex items-center gap-3">
-          <span className="px-2.5 py-1 bg-brand/10 text-brand text-[11px] font-mono font-bold rounded-md border border-brand/20">
+        <div className="flex items-center gap-2">
+          {/* AI Copilot 唤醒按钮 */}
+          <button
+            onClick={() => {
+              setIsCopilotOpen(!isCopilotOpen);
+              setTimeout(() => copilotInputRef.current?.focus(), 50);
+            }}
+            className={`p-1.5 rounded-md transition-all shadow-sm border text-xs flex items-center gap-1 font-medium ${isCopilotOpen ? "bg-indigo-50 border-indigo-200 text-indigo-600" : "text-indigo-500 border-indigo-100 hover:bg-indigo-50 bg-white"}`}
+            title="局部 AI 助手 (Ctrl+I)"
+          >
+            <Sparkles className="w-4 h-4" /> Copilot
+          </button>
+          <span className="px-2 py-1 bg-brand/10 text-brand text-[11px] font-mono font-bold rounded-md border border-brand/20 ml-1">
             {selectedComponent.type}
           </span>
           <button
             onClick={() => deleteComponent(selectedComponent.id)}
-            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-all shadow-sm border border-transparent hover:border-red-100 group"
-            title="移除该组件"
+            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-all"
           >
-            <Trash2 className="w-4 h-4 group-hover:scale-110 transition-transform" />
+            <Trash2 className="w-4 h-4" />
           </button>
         </div>
       </header>
 
-      {/*  可滚动配置区域  */}
+      {/* --- AI Copilot 浮层交互区 --- */}
+      {isCopilotOpen && (
+        <div className="shrink-0 p-4 bg-indigo-600/5 border-b border-indigo-100 shadow-inner animate-in slide-in-from-top-2">
+          <div className="flex items-center gap-2 mb-2">
+            <Sparkles className="w-4 h-4 text-indigo-600" />
+            <span className="text-xs font-bold text-indigo-900">
+              对该组件发指令...
+            </span>
+            <span className="ml-auto text-[10px] text-indigo-400 bg-white px-1.5 rounded border border-indigo-100 font-mono shadow-sm">
+              Ctrl+I
+            </span>
+          </div>
+          <div className="flex gap-2">
+            <input
+              ref={copilotInputRef}
+              type="text"
+              placeholder="例如：把选项改为四大名著..."
+              className="flex-1 px-3 py-1.5 text-sm rounded border border-indigo-200 focus:ring-2 focus:ring-indigo-500/30 outline-none"
+              value={copilotPrompt}
+              onChange={(e) => setCopilotPrompt(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleModifyComponent()}
+            />
+            <button
+              onClick={handleModifyComponent}
+              disabled={isCopilotLoading || !copilotPrompt.trim()}
+              className="px-3 py-1.5 bg-indigo-600 text-white text-sm rounded font-medium hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center min-w-[60px]"
+            >
+              {isCopilotLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                "修改"
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="flex-1 overflow-y-auto custom-scrollbar pb-10">
-
-        {/*  1. 基础属性  */}
-        {selectedComponent.type !== 'button' && (
+        {/* 1. 基础属性  */}
+        {selectedComponent.type !== "button" && (
           <PanelSection title="基础属性" icon={Settings2}>
+            {/* ... 基础属性原有逻辑保持不变 ... */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-slate-600">字段标题 (Label)</label>
-              <input type="text" className={inputBaseStyle} value={selectedComponent.label || ''} onChange={(e) => updateComponent(selectedComponent.id, { label: e.target.value })} />
+              <label className="text-xs font-semibold text-slate-600">
+                字段标题 (Label)
+              </label>
+              <input
+                type="text"
+                className={inputBaseStyle}
+                value={selectedComponent.label || ""}
+                onChange={(e) =>
+                  updateComponent(selectedComponent.id, {
+                    label: e.target.value,
+                  })
+                }
+              />
             </div>
-
-            {selectedComponent.type !== 'switch' && (
-              <label className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-lg cursor-pointer hover:border-brand/50 hover:shadow-sm transition-all mt-2">
+            {selectedComponent.type !== "switch" && (
+              <label className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-lg cursor-pointer hover:border-brand/50 transition-all mt-2">
                 <div className="flex flex-col">
-                  <span className="text-sm font-semibold text-slate-700">设为必填项</span>
-                  <span className="text-[10px] text-slate-400 mt-0.5">提交时将校验此字段</span>
+                  <span className="text-sm font-semibold text-slate-700">
+                    设为必填项
+                  </span>
+                  <span className="text-[10px] text-slate-400 mt-0.5">
+                    提交时将校验此字段
+                  </span>
                 </div>
                 <div className="relative inline-flex items-center">
-                  <input type="checkbox" className="sr-only peer" checked={selectedComponent.required || false} onChange={(e) => updateComponent(selectedComponent.id, { required: e.target.checked })} />
+                  <input
+                    type="checkbox"
+                    className="sr-only peer"
+                    checked={selectedComponent.required || false}
+                    onChange={(e) =>
+                      updateComponent(selectedComponent.id, {
+                        required: e.target.checked,
+                      })
+                    }
+                  />
                   <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-brand/30 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-brand"></div>
                 </div>
               </label>
@@ -73,113 +252,291 @@ export const SetterPanel = () => {
           </PanelSection>
         )}
 
-        {/*  2. 控件高级属性  */}
+        {/* 2. 控件高级属性  */}
         <PanelSection title="控件高级属性" icon={Sliders}>
-
-          {selectedComponent.type === 'button' && (
+          {/* ... 高级属性所有组件原有逻辑保持不变 ... */}
+          {selectedComponent.type === "button" && (
             <div className="flex flex-col gap-2 p-3 bg-brand/5 rounded-lg border border-brand/20">
               <label className="text-xs font-bold text-brand flex items-center gap-1">
                 <MousePointer2 className="w-3 h-3" /> 按钮文字 (Text)
               </label>
-              <input type="text" placeholder="例如: 提交表单" className={inputBaseStyle} value={selectedComponent.props.buttonText || ''} onChange={(e) => updateProps(selectedComponent.id, { buttonText: e.target.value })} />
+              <input
+                type="text"
+                className={inputBaseStyle}
+                value={selectedComponent.props.buttonText || ""}
+                onChange={(e) =>
+                  updateProps(selectedComponent.id, {
+                    buttonText: e.target.value,
+                  })
+                }
+              />
             </div>
           )}
-
-          {(selectedComponent.type === 'input' || selectedComponent.type === 'textarea') && (
+          {(selectedComponent.type === "input" ||
+            selectedComponent.type === "textarea") && (
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-slate-600">占位文字 (Placeholder)</label>
-              <input type="text" className={inputBaseStyle} value={selectedComponent.props.placeholder || ''} onChange={(e) => updateProps(selectedComponent.id, { placeholder: e.target.value })} />
+              <label className="text-xs font-semibold text-slate-600">
+                占位文字 (Placeholder)
+              </label>
+              <input
+                type="text"
+                className={inputBaseStyle}
+                value={selectedComponent.props.placeholder || ""}
+                onChange={(e) =>
+                  updateProps(selectedComponent.id, {
+                    placeholder: e.target.value,
+                  })
+                }
+              />
             </div>
           )}
-
-          {selectedComponent.type === 'upload' && (
+          {selectedComponent.type === "upload" && (
             <div className="flex flex-col gap-2 p-3 bg-indigo-50/50 rounded-lg border border-indigo-100">
-              <label className="text-xs font-bold text-indigo-900 flex items-center gap-1"><Upload className="w-3 h-3" /> 限制文件类型 (Accept)</label>
-              <input type="text" placeholder="例如: image/*, .pdf, .xls" className={inputBaseStyle} value={selectedComponent.props.accept || ''} onChange={(e) => updateProps(selectedComponent.id, { accept: e.target.value })} />
-              <p className="text-[10px] text-indigo-400/80 leading-tight">支持标准 MIME 类型或后缀名，留空则允许所有文件</p>
+              <label className="text-xs font-bold text-indigo-900 flex items-center gap-1">
+                <Upload className="w-3 h-3" /> 限制文件类型
+              </label>
+              <input
+                type="text"
+                placeholder="例如: image/*"
+                className={inputBaseStyle}
+                value={selectedComponent.props.accept || ""}
+                onChange={(e) =>
+                  updateProps(selectedComponent.id, { accept: e.target.value })
+                }
+              />
             </div>
           )}
-
-          {selectedComponent.type === 'rate' && (
+          {selectedComponent.type === "rate" && (
             <div className="flex flex-col gap-2 p-3 bg-yellow-50/50 rounded-lg border border-yellow-100">
-              <label className="text-xs font-bold text-yellow-900 flex items-center gap-1"><Star className="w-3 h-3" /> 最大星数 (Max Rate)</label>
-              <input type="number" min={3} max={10} className={inputBaseStyle} value={selectedComponent.props.maxRate || 5} onChange={(e) => updateProps(selectedComponent.id, { maxRate: Number(e.target.value) })} />
+              <label className="text-xs font-bold text-yellow-900 flex items-center gap-1">
+                <Star className="w-3 h-3" /> 最大星数 (Max Rate)
+              </label>
+              <input
+                type="number"
+                min={3}
+                max={10}
+                className={inputBaseStyle}
+                value={selectedComponent.props.maxRate || 5}
+                onChange={(e) =>
+                  updateProps(selectedComponent.id, {
+                    maxRate: Number(e.target.value),
+                  })
+                }
+              />
             </div>
           )}
-
-          {selectedComponent.type === 'switch' && (
+          {selectedComponent.type === "switch" && (
             <div className="flex flex-col gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
-              <label className="text-xs font-bold text-slate-700 flex items-center gap-1"><ToggleLeft className="w-3 h-3" /> 状态展示文案</label>
+              <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                <ToggleLeft className="w-3 h-3" /> 状态文案
+              </label>
               <div className="flex gap-2">
-                <input type="text" placeholder="开启文案" className={inputBaseStyle} value={selectedComponent.props.activeText || ''} onChange={(e) => updateProps(selectedComponent.id, { activeText: e.target.value })} />
-                <input type="text" placeholder="关闭文案" className={inputBaseStyle} value={selectedComponent.props.inactiveText || ''} onChange={(e) => updateProps(selectedComponent.id, { inactiveText: e.target.value })} />
+                <input
+                  type="text"
+                  placeholder="开启"
+                  className={inputBaseStyle}
+                  value={selectedComponent.props.activeText || ""}
+                  onChange={(e) =>
+                    updateProps(selectedComponent.id, {
+                      activeText: e.target.value,
+                    })
+                  }
+                />
+                <input
+                  type="text"
+                  placeholder="关闭"
+                  className={inputBaseStyle}
+                  value={selectedComponent.props.inactiveText || ""}
+                  onChange={(e) =>
+                    updateProps(selectedComponent.id, {
+                      inactiveText: e.target.value,
+                    })
+                  }
+                />
               </div>
             </div>
           )}
-
-          {/*  引入独立的选项编辑器组件  */}
-          {(selectedComponent.type === 'radio' || selectedComponent.type === 'select' || selectedComponent.type === 'checkbox') && (
+          {(selectedComponent.type === "radio" ||
+            selectedComponent.type === "select" ||
+            selectedComponent.type === "checkbox") && (
             <OptionsEditor
               options={selectedComponent.props.options || []}
-              onChange={(newOpts) => updateProps(selectedComponent.id, { options: newOpts })}
+              onChange={(newOpts) =>
+                updateProps(selectedComponent.id, { options: newOpts })
+              }
             />
           )}
-
-          {selectedComponent.type === 'cascader' && (
+          {selectedComponent.type === "cascader" && (
             <div className="flex flex-col gap-2">
-              <label className="text-xs font-bold text-slate-700">树形数据结构 (JSON)</label>
-              <div className="relative group">
-                <textarea
-                  className="w-full h-56 px-4 py-3 bg-slate-900 text-green-400 font-mono text-[12px] leading-relaxed rounded-xl focus:ring-2 focus:ring-brand outline-none shadow-inner custom-scrollbar"
-                  defaultValue={JSON.stringify(selectedComponent.props.options || [], null, 2)}
-                  onBlur={(e) => {
-                    try {
-                      const newOpts = JSON.parse(e.target.value);
-                      updateProps(selectedComponent.id, { options: newOpts });
-                    } catch (err) {
-                      alert("JSON 格式错误，请检查括号和引号是否匹配！");
-                    }
-                  }}
-                />
-                <div className="absolute top-2 right-2 px-2 py-1 bg-slate-800 text-slate-400 text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">失焦自动保存</div>
-              </div>
+              <label className="text-xs font-bold text-slate-700">
+                树形数据结构 (JSON)
+              </label>
+              <textarea
+                className="w-full h-56 px-4 py-3 bg-slate-900 text-green-400 font-mono text-[12px] leading-relaxed rounded-xl focus:ring-2 focus:ring-brand outline-none shadow-inner custom-scrollbar"
+                defaultValue={JSON.stringify(
+                  selectedComponent.props.options || [],
+                  null,
+                  2,
+                )}
+                onBlur={(e) => {
+                  try {
+                    updateProps(selectedComponent.id, {
+                      options: JSON.parse(e.target.value),
+                    });
+                  } catch (err) {
+                    alert("JSON 格式错误！");
+                  }
+                }}
+              />
             </div>
           )}
         </PanelSection>
 
-        {/*  3. 数据校验  */}
-        {(selectedComponent.type === 'input' || selectedComponent.type === 'textarea') && (
-          <PanelSection title="数据校验" icon={ShieldCheck} defaultOpen={false}>
+        {/* 3. 数据校验 (带 AI 正则生成)  */}
+        {(selectedComponent.type === "input" ||
+          selectedComponent.type === "textarea") && (
+          <PanelSection title="数据校验" icon={ShieldCheck} defaultOpen={true}>
+            {/* AI 智能正则入口 */}
+            <div className="mb-4 bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-100 rounded-xl p-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-purple-900 flex items-center gap-1">
+                  <Wand2 className="w-3.5 h-3.5 text-purple-600" /> 智能生成正则
+                </span>
+                <button
+                  onClick={() => setIsRegexAIOpen(!isRegexAIOpen)}
+                  className="text-[10px] bg-white px-2 py-1 rounded shadow-sm text-purple-600 font-medium hover:bg-purple-100 transition-colors"
+                >
+                  {isRegexAIOpen ? "收起" : "试试看"}
+                </button>
+              </div>
+              {isRegexAIOpen && (
+                <div className="flex flex-col gap-2 mt-2 animate-in fade-in duration-200">
+                  <input
+                    type="text"
+                    placeholder="输入规则，如：大陆手机号、邮箱..."
+                    className="w-full text-xs px-2 py-1.5 border border-purple-200 rounded outline-none focus:ring-1 focus:ring-purple-500"
+                    value={regexPrompt}
+                    onChange={(e) => setRegexPrompt(e.target.value)}
+                    onKeyDown={(e) =>
+                      e.key === "Enter" && handleGenerateRegex()
+                    }
+                  />
+                  <button
+                    onClick={handleGenerateRegex}
+                    disabled={isRegexLoading || !regexPrompt.trim()}
+                    className="w-full bg-purple-600 text-white text-xs py-1.5 rounded font-medium hover:bg-purple-700 disabled:opacity-50 flex items-center justify-center gap-1"
+                  >
+                    {isRegexLoading ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      "生成并填充"
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
+
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-slate-600">正则表达式 (Regex)</label>
-              <input type="text" placeholder="例如: ^1[3-9]\d{9}$" className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-green-400 font-mono placeholder:text-slate-500 focus:ring-2 focus:ring-brand/50 outline-none shadow-inner" value={selectedComponent.validation?.regex || ''} onChange={(e) => updateComponent(selectedComponent.id, { validation: { regex: e.target.value, message: selectedComponent.validation?.message || '格式不正确' } })} />
+              <label className="text-xs font-semibold text-slate-600">
+                正则表达式 (Regex)
+              </label>
+              <input
+                type="text"
+                placeholder="例如: ^1[3-9]\d{9}$"
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-green-400 font-mono placeholder:text-slate-500 focus:ring-2 focus:ring-brand/50 outline-none shadow-inner"
+                value={selectedComponent.validation?.regex || ""}
+                onChange={(e) =>
+                  updateComponent(selectedComponent.id, {
+                    validation: {
+                      regex: e.target.value,
+                      message:
+                        selectedComponent.validation?.message || "格式不正确",
+                    },
+                  })
+                }
+              />
             </div>
 
             {selectedComponent.validation?.regex && (
               <div className="flex flex-col gap-1.5 pt-2">
-                <label className="text-xs font-semibold text-slate-600">校验失败提示语</label>
-                <input type="text" placeholder="请输入正确的格式" className="w-full px-3 py-2 bg-red-50 border border-red-100 rounded-lg text-sm text-red-800 placeholder:text-red-300 focus:border-red-300 focus:ring-2 focus:ring-red-200 outline-none" value={selectedComponent.validation?.message || ''} onChange={(e) => updateComponent(selectedComponent.id, { validation: { ...selectedComponent.validation!, message: e.target.value } })} />
+                <label className="text-xs font-semibold text-slate-600">
+                  校验失败提示语
+                </label>
+                <input
+                  type="text"
+                  placeholder="请输入正确的格式"
+                  className="w-full px-3 py-2 bg-red-50 border border-red-100 rounded-lg text-sm text-red-800 placeholder:text-red-300 focus:border-red-300 focus:ring-2 focus:ring-red-200 outline-none"
+                  value={selectedComponent.validation?.message || ""}
+                  onChange={(e) =>
+                    updateComponent(selectedComponent.id, {
+                      validation: {
+                        ...selectedComponent.validation!,
+                        message: e.target.value,
+                      },
+                    })
+                  }
+                />
               </div>
             )}
           </PanelSection>
         )}
 
-        {/*  4. 动态逻辑  */}
-        {selectedComponent.type !== 'button' && (
-          <PanelSection title="动态显示逻辑" icon={GitBranch} defaultOpen={false}>
+        {/* 4. 动态逻辑  */}
+        {selectedComponent.type !== "button" && (
+          <PanelSection
+            title="动态显示逻辑"
+            icon={GitBranch}
+            defaultOpen={false}
+          >
+            {/* ... 动态逻辑保持不变 ... */}
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">依赖字段 (Source)</label>
-                <select className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 shadow-sm focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none cursor-pointer" value={selectedComponent.visibleRule?.sourceId || ''} onChange={(e) => updateComponent(selectedComponent.id, { visibleRule: e.target.value ? { sourceId: e.target.value, operator: '===', value: '' } : undefined })}>
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  依赖字段 (Source)
+                </label>
+                <select
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 shadow-sm focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none cursor-pointer"
+                  value={selectedComponent.visibleRule?.sourceId || ""}
+                  onChange={(e) =>
+                    updateComponent(selectedComponent.id, {
+                      visibleRule: e.target.value
+                        ? {
+                            sourceId: e.target.value,
+                            operator: "===",
+                            value: "",
+                          }
+                        : undefined,
+                    })
+                  }
+                >
                   <option value="">始终显示 (无依赖条件)</option>
-                  {dependencyOptions.map(c => <option key={c.id} value={c.id}>{c.label} (ID: {c.id.slice(0, 4)})</option>)}
+                  {dependencyOptions.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.label} (ID: {c.id.slice(0, 4)})
+                    </option>
+                  ))}
                 </select>
               </div>
 
               {selectedComponent.visibleRule?.sourceId && (
                 <div className="flex flex-col gap-1.5 pt-2 border-t border-slate-200 border-dashed">
-                  <label className="text-[11px] font-bold text-brand uppercase tracking-wider">当触发值等于 (Value)</label>
-                  <input type="text" placeholder="输入期望的值..." className="w-full px-3 py-2 bg-white border border-brand/30 rounded-lg text-sm text-slate-800 shadow-sm font-mono focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none" value={selectedComponent.visibleRule?.value || ''} onChange={(e) => updateComponent(selectedComponent.id, { visibleRule: { ...selectedComponent.visibleRule!, value: e.target.value } })} />
+                  <label className="text-[11px] font-bold text-brand uppercase tracking-wider">
+                    当触发值等于 (Value)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="输入期望的值..."
+                    className="w-full px-3 py-2 bg-white border border-brand/30 rounded-lg text-sm text-slate-800 shadow-sm font-mono focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none"
+                    value={selectedComponent.visibleRule?.value || ""}
+                    onChange={(e) =>
+                      updateComponent(selectedComponent.id, {
+                        visibleRule: {
+                          ...selectedComponent.visibleRule!,
+                          value: e.target.value,
+                        },
+                      })
+                    }
+                  />
                 </div>
               )}
             </div>
