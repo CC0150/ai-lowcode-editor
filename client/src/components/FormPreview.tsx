@@ -172,7 +172,6 @@ export const FormPreview: React.FC<Props> = ({
 
               if (comp.type === "button") {
                 return (
-                  // 使用 safeKey 替换 comp.id
                   <div
                     key={safeKey}
                     className="pt-4 mt-4 border-t border-gray-100"
