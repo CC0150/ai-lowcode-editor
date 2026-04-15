@@ -1,3 +1,5 @@
+import { type Patch } from "immer";
+
 export type FormItemType =
   | "input"
   | "textarea"
@@ -51,9 +53,15 @@ export interface ComponentSchema {
   validation?: ValidationRule;
 }
 
+// 补丁历史记录接口
+export interface HistoryPatch {
+  forward: Patch[];  // 正向补丁（用于重做）
+  inverse: Patch[];  // 反向补丁（用于撤销）
+}
+
 export interface EditorStore {
-  past: ComponentSchema[][];
-  future: ComponentSchema[][];
+  past: HistoryPatch[];
+  future: HistoryPatch[];
   components: ComponentSchema[];
   selectedId: string | null;
 

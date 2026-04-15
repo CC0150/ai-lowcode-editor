@@ -1,18 +1,26 @@
 import { create } from "zustand";
-import type {
-  ComponentSchema,
-  EditorStore,
-  FormItemType,
-} from "../types/editor";
-import { arrayMove } from "@dnd-kit/sortable";
+import { enablePatches, produceWithPatches, applyPatches } from "immer";
+import type { ComponentSchema, EditorStore, FormItemType } from "../types/editor";
+
+// 开启 Immer 的 JSON Patch 补丁功能
+enablePatches();
 
 export const useEditorStore = create<EditorStore>((set, get) => {
-  // 状态拦截器 (每次修改前，保存当前状态的快照)
-  const commit = () => {
+  
+  // 核心拦截器：通过 immer 生成最小差异补丁，替代全量快照
+  const applyChange = (recipe: (draft: ComponentSchema[]) => void) => {
     const currentComponents = get().components;
+    
+    // produceWithPatches 返回：[新状态, 正向补丁(用于重做), 反向补丁(用于撤销)]
+    const [nextState, forwardPatches, inversePatches] = produceWithPatches(currentComponents, recipe);
+
+    // 如果没有发生实质性变化，不计入历史栈
+    if (forwardPatches.length === 0) return;
+
     set((state) => ({
-      past: [...state.past, currentComponents], // 将当前状态压入 past 栈
-      future: [], // 一旦发生新操作，清空 future 栈
+      components: nextState,
+      past: [...state.past, { forward: forwardPatches, inverse: inversePatches }], // 仅保存差异
+      future: [], // 发生新操作，清空重做栈
     }));
   };
 
@@ -23,56 +31,21 @@ export const useEditorStore = create<EditorStore>((set, get) => {
     future: [],
 
     addComponent: (type: FormItemType) => {
-      commit(); // 修改前记录历史
-
-      // 判断是否为一维数组选项的组件
-      const isOptionsType =
-        type === "radio" || type === "select" || type === "checkbox";
-
-      //  1. 扩充：智能生成默认标题 (加入高级组件)  */
+      const isOptionsType = type === "radio" || type === "select" || type === "checkbox";
       const labelMap: Record<FormItemType, string> = {
-        input: "单行文本",
-        textarea: "多行文本",
-        radio: "单项选择",
-        checkbox: "多项选择",
-        select: "下拉选择",
-        date: "日期选择",
-        button: "提交按钮",
-        upload: "文件上传",
-        rate: "评分星级",
-        switch: "开关选择",
-        cascader: "级联选择",
+        input: "单行文本", textarea: "多行文本", radio: "单项选择",
+        checkbox: "多项选择", select: "下拉选择", date: "日期选择",
+        button: "提交按钮", upload: "文件上传", rate: "评分星级",
+        switch: "开关选择", cascader: "级联选择",
       };
 
-      //  2. 扩充：为不同的组件分配专属的默认 Props  */
       const defaultProps: any = {};
-
-      if (type === "input" || type === "textarea" || type === "date") {
-        defaultProps.placeholder = "请输入";
-      } else if (type === "button") {
-        defaultProps.buttonText = "提交表单";
-      } else if (isOptionsType) {
-        defaultProps.options = [
-          { label: "选项 1", value: "1" },
-          { label: "选项 2", value: "2" },
-        ];
-      } else if (type === "cascader") {
-        // 级联组件需要默认的树形结构数据
-        defaultProps.options = [
-          {
-            label: "选项 1",
-            value: "1",
-            children: [
-              { label: "子选项 1-1", value: "1-1" }
-            ]
-          }
-        ];
-      } else if (type === "rate") {
-        defaultProps.maxRate = 5; // 默认 5 颗星
-      } else if (type === "switch") {
-        defaultProps.activeText = "开启";
-        defaultProps.inactiveText = "关闭";
-      }
+      if (type === "input" || type === "textarea" || type === "date") defaultProps.placeholder = "请输入";
+      else if (type === "button") defaultProps.buttonText = "提交表单";
+      else if (isOptionsType) defaultProps.options = [ { label: "选项 1", value: "1" }, { label: "选项 2", value: "2" } ];
+      else if (type === "cascader") defaultProps.options = [ { label: "选项 1", value: "1", children: [ { label: "子选项 1-1", value: "1-1" } ] } ];
+      else if (type === "rate") defaultProps.maxRate = 5;
+      else if (type === "switch") { defaultProps.activeText = "开启"; defaultProps.inactiveText = "关闭"; }
 
       const newComponent: ComponentSchema = {
         id: crypto.randomUUID(),
@@ -82,84 +55,78 @@ export const useEditorStore = create<EditorStore>((set, get) => {
         props: defaultProps,
       };
 
-      set((state) => ({ components: [...state.components, newComponent] }));
+      // 所有的状态变更都在 applyChange 的回调中以可变 (Mutable) 的方式写
+      applyChange((draft) => {
+        draft.push(newComponent);
+      });
     },
 
-    selectComponent: (id) => set({ selectedId: id }),
+    selectComponent: (id) => set({ selectedId: id }), // 选中组件不计入历史补丁
 
     updateComponent: (id, updates) => {
-      commit();
-      set((state) => ({
-        components: state.components.map((c) =>
-          c.id === id ? { ...c, ...updates } : c,
-        ),
-      }));
+      applyChange((draft) => {
+        const index = draft.findIndex((c) => c.id === id);
+        if (index !== -1) Object.assign(draft[index], updates);
+      });
     },
 
     updateProps: (id, props) => {
-      commit();
-      set((state) => ({
-        components: state.components.map((c) =>
-          c.id === id ? { ...c, props: { ...c.props, ...props } } : c,
-        ),
-      }));
+      applyChange((draft) => {
+        const component = draft.find((c) => c.id === id);
+        if (component) Object.assign(component.props, props);
+      });
     },
 
     reorderComponents: (oldIndex, newIndex) => {
-      commit();
-      set((state) => ({
-        components: arrayMove(state.components, oldIndex, newIndex),
-      }));
+      applyChange((draft) => {
+        // 使用 splice 模拟 arrayMove，immer 会将其转化为极其精简的 Patch
+        const item = draft.splice(oldIndex, 1)[0];
+        draft.splice(newIndex, 0, item);
+      });
     },
 
     deleteComponent: (id) => {
-      commit();
+      applyChange((draft) => {
+        const index = draft.findIndex((c) => c.id === id);
+        if (index !== -1) draft.splice(index, 1);
+      });
+      // 选中状态单独同步，不记录到 draft 历史中
       set((state) => ({
-        components: state.components.filter((c) => c.id !== id),
         selectedId: state.selectedId === id ? null : state.selectedId,
       }));
     },
 
-    // 撤销 (Undo)
+    // 撤销：将 "反向补丁" 打在当前状态上
     undo: () =>
       set((state) => {
         if (state.past.length === 0) return state;
-
-        const previous = state.past[state.past.length - 1];
-        const newPast = state.past.slice(0, -1);
-
+        const lastPatch = state.past[state.past.length - 1];
         return {
-          past: newPast,
-          future: [state.components, ...state.future],
-          components: previous,
+          past: state.past.slice(0, -1),
+          future: [lastPatch, ...state.future],
+          components: applyPatches(state.components, lastPatch.inverse), 
           selectedId: null,
         };
       }),
 
-    // 重做 (Redo)
+    // 重做：将 "正向补丁" 打在当前状态上
     redo: () =>
       set((state) => {
         if (state.future.length === 0) return state;
-
-        const next = state.future[0];
-        const newFuture = state.future.slice(1);
-
+        const nextPatch = state.future[0];
         return {
-          past: [...state.past, state.components],
-          future: newFuture,
-          components: next,
+          past: [...state.past, nextPatch],
+          future: state.future.slice(1),
+          components: applyPatches(state.components, nextPatch.forward),
           selectedId: null,
         };
       }),
 
-    // AI 生成组件
-    applyAIGenerated: (newComponents: ComponentSchema[]) => {
-      set((state) => ({
-        past: [...state.past, state.components],
-        future: [],
-        components: newComponents,
-        selectedId: null,
-      }));
+    applyAIGenerated: (newComponents) => {
+      applyChange((draft) => {
+        // 清空当前数组并推入 AI 生成的新组件
+        draft.splice(0, draft.length, ...newComponents);
+      });
     },
   };
 });
