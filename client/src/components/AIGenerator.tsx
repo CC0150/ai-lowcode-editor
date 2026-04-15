@@ -6,6 +6,27 @@ import { FormPreview } from "./FormPreview";
 import { Sparkles, Command, CornerDownLeft, X } from "lucide-react";
 import { message } from "antd";
 
+// 新增：残缺 JSON 修复器。尝试强行闭合未传输完的 JSON 结构，提取出已成型的组件数组
+const parsePartialJSON = (jsonString: string) => {
+  try {
+    return JSON.parse(jsonString).components;
+  } catch (e) {
+    // 粗暴但有效的容错：穷举常见的截断闭合情况
+    const closures = ["", "}", "]}", "}]}", "\"]}", '"}', '"]}', '}}]}'];
+    let fixedText = jsonString.replace(/,\s*$/, ""); // 移除末尾多余的逗号
+    
+    for (const closure of closures) {
+      try {
+        const parsed = JSON.parse(fixedText + closure);
+        if (parsed && Array.isArray(parsed.components)) {
+          return parsed.components;
+        }
+      } catch (err) {}
+    }
+    return null; // 如果全都解析失败，说明数据还太少，返回 null 继续等待
+  }
+};
+
 export function AIGenerator() {
   const [isOpen, setIsOpen] = useState(false);
   const [prompt, setPrompt] = useState("");
@@ -40,7 +61,10 @@ export function AIGenerator() {
   const handleGenerate = async () => {
     if (!prompt.trim() || loading) return;
     setLoading(true);
-    setPreviewData(null); // 清空上一次的预览
+    setPreviewData([]); // 注意这里：将 null 改为 []，为了让 UI 尽早开始渲染
+    
+    let accumulatedText = "";
+
     try {
       const response = await fetch("http://localhost:3001/api/generate-form", {
         method: "POST",
@@ -48,16 +72,48 @@ export function AIGenerator() {
         body: JSON.stringify({ prompt }),
       });
 
-      const result = await response.json();
+      if (!response.body) throw new Error("无响应流");
 
-      if (result.success && Array.isArray(result.data)) {
-        setPreviewData(result.data);
-      } else {
-        message.error("AI 生成失败：" + result.error);
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        // 解码当前的 Buffer 块
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split("\n");
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            const dataStr = line.slice(6);
+            if (dataStr === "[DONE]") break; // 传输完毕
+            
+            try {
+              const parsedData = JSON.parse(dataStr);
+              if (parsedData.error) {
+                message.error(parsedData.error);
+                return;
+              }
+              if (parsedData.content) {
+                accumulatedText += parsedData.content;
+                
+                // 核心：实时解析截断的 JSON，一旦解析出有效的组件，立刻塞给预览区渲染
+                const partialComponents = parsePartialJSON(accumulatedText);
+                if (partialComponents && partialComponents.length > 0) {
+                  setPreviewData(partialComponents);
+                }
+              }
+            } catch (e) {
+              // 忽略解析单行 data 时的错误
+            }
+          }
+        }
       }
     } catch (error) {
       console.error("请求异常:", error);
-      message.error("请求后端接口失败，请确认服务是否启动");
+      message.error("请求后端接口失败");
     } finally {
       setLoading(false);
     }
@@ -108,21 +164,29 @@ export function AIGenerator() {
           <>
             <div className="h-[1px] w-full bg-slate-100" />
             <div className="flex-1 overflow-y-auto bg-slate-50/80 p-6 custom-scrollbar relative max-h-[60vh]">
-              {loading ? (
+              
+              {/* 如果已经有数据了，就直接渲染，并在角落悬浮 Loading 提示 */}
+              {previewData && previewData.length > 0 ? (
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden relative min-h-[200px]">
+                  <FormPreview overrideComponents={previewData} isEmbedded={true} />
+                  
+                  {loading && (
+                    <div className="absolute bottom-4 right-4 bg-white/95 backdrop-blur shadow-md px-3 py-1.5 rounded-full flex items-center gap-2 border border-indigo-50 animate-in fade-in zoom-in slide-in-from-bottom-2">
+                       <div className="w-3 h-3 border-2 border-indigo-200 rounded-full animate-spin border-t-indigo-500"></div>
+                       <span className="text-xs text-indigo-600 font-medium">AI 正在书写...</span>
+                    </div>
+                  )}
+                </div>
+              ) : loading ? (
+                /* 首字到达前，依然显示居中的大 Loading */
                 <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-4 py-12">
                   <div className="relative">
                      <div className="w-12 h-12 border-4 border-indigo-100 rounded-full animate-spin border-t-indigo-500"></div>
                      <Sparkles className="w-5 h-5 text-indigo-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
                   </div>
-                  <p className="text-sm font-medium animate-pulse">正在编排组件...</p>
+                  <p className="text-sm font-medium animate-pulse">正在理解您的需求...</p>
                 </div>
-              ) : (
-                previewData && (
-                  <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden relative">
-                    <FormPreview overrideComponents={previewData} isEmbedded={true} />
-                  </div>
-                )
-              )}
+              ) : null}
             </div>
 
             <div className="px-6 py-4 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">

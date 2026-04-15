@@ -65,28 +65,40 @@ app.post("/api/generate-form", async (req, res) => {
         return res.status(400).json({ success: false, error: "请输入描述需求" });
     }
 
+    // 1. 设置 Server-Sent Events (SSE) 必备的响应头
+    res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+
     try {
-        const completion = await openai.chat.completions.create({
-            model: "deepseek-chat", // DeepSeek V3 核心模型
+        // 2. 开启大模型的 stream 模式
+        const stream = await openai.chat.completions.create({
+            model: "deepseek-chat",
             messages: [
                 { role: "system", content: SYSTEM_PROMPT },
                 { role: "user", content: prompt },
             ],
-            response_format: { type: "json_object" }, // 强制返回 JSON 对象
+            response_format: { type: "json_object" }, 
+            stream: true, // 核心：开启流式传输
         });
 
-        const aiContent =
-            completion.choices?.[0]?.message?.content || '{"components": []}';
+        // 3. 监听数据流，将其转换为标准的 SSE 格式推送给前端
+        for await (const chunk of stream) {
+            const content = chunk.choices[0]?.delta?.content || "";
+            if (content) {
+                // 必须以 data: 开头，\n\n 结尾
+                res.write(`data: ${JSON.stringify({ content })}\n\n`);
+            }
+        }
+        
+        // 4. 传输完成标识
+        res.write(`data: [DONE]\n\n`);
+        res.end();
 
-        // 解析返回的 JSON
-        const parsedData = JSON.parse(aiContent);
-
-        res.json({ success: true, data: parsedData.components });
     } catch (error) {
         console.error("AI Generation Error:", error);
-        res
-            .status(500)
-            .json({ success: false, error: "大模型生成失败，请查看后端控制台日志" });
+        res.write(`data: ${JSON.stringify({ error: "大模型生成失败，请查看后端日志" })}\n\n`);
+        res.end();
     }
 });
 
