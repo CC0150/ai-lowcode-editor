@@ -1,7 +1,17 @@
-import React, { useState } from "react";
-import { AlertCircle, UploadCloud, Star, FileText, X } from "lucide-react";
+import React from "react";
+import { UploadCloud, FileText, X } from "lucide-react";
 import { type ComponentSchema } from "../types/editor";
-import { Cascader } from "antd";
+import {
+    Input,
+    Select,
+    Radio,
+    Checkbox,
+    Rate,
+    Switch,
+    Cascader,
+    DatePicker
+} from "antd";
+import dayjs from "dayjs";
 
 interface FormControlProps {
     schema: ComponentSchema; // 当前组件的配置信息
@@ -11,87 +21,117 @@ interface FormControlProps {
 }
 
 export const FormControl: React.FC<FormControlProps> = ({ schema, value, hasError, onChange }) => {
-    // 评分组件专属的局部状态 (完美解耦，不再污染父组件)
-    const [hoverValue, setHoverValue] = useState(0);
-
-    const baseInputStyle = `w-full border rounded-md px-3 py-2.5 text-sm outline-none transition-all ${hasError
-            ? "border-red-400 bg-red-50 focus:ring-2 focus:ring-red-200 text-red-900"
-            : "border-gray-300 focus:ring-2 focus:ring-brand bg-white"
-        }`;
+    // 统一的错误状态标识，传递给 AntD 组件的 status 属性
+    const antStatus = hasError ? "error" : "";
 
     switch (schema.type) {
         case "input":
             return (
-                <div className="relative">
-                    <input
-                        type="text"
-                        placeholder={schema.props.placeholder}
-                        value={value || ""}
-                        onChange={(e) => onChange(e.target.value)}
-                        className={baseInputStyle}
-                    />
-                    {hasError && <AlertCircle className="w-4 h-4 text-red-500 absolute right-3 top-3" />}
-                </div>
-            );
-        case "textarea":
-            return (
-                <textarea
+                <Input
                     placeholder={schema.props.placeholder}
                     value={value || ""}
                     onChange={(e) => onChange(e.target.value)}
-                    className={`${baseInputStyle} resize-y min-h-[80px]`}
+                    status={antStatus}
+                    className="w-full"
                 />
             );
-        case "date":
+
+        case "textarea":
             return (
-                <input
-                    type="date"
+                <Input.TextArea
+                    placeholder={schema.props.placeholder}
                     value={value || ""}
                     onChange={(e) => onChange(e.target.value)}
-                    className={baseInputStyle}
+                    status={antStatus}
+                    autoSize={{ minRows: 3, maxRows: 6 }} // 自动适应高度
+                    className="w-full"
                 />
             );
+
+        case "date":
+            return (
+                <DatePicker
+                    value={value ? dayjs(value) : null}
+                    onChange={(date, dateString) => onChange(dateString)}
+                    status={antStatus}
+                    className="w-full"
+                />
+            );
+
         case "select":
             return (
-                <select value={value || ""} onChange={(e) => onChange(e.target.value)} className={baseInputStyle}>
-                    <option value="" disabled>请选择...</option>
-                    {schema.props.options?.map((opt, i) => <option key={i} value={opt.value}>{opt.label}</option>)}
-                </select>
+                <Select
+                    value={value || undefined}
+                    onChange={(val) => onChange(val)}
+                    options={schema.props.options}
+                    placeholder="请选择..."
+                    status={antStatus}
+                    className="w-full"
+                />
             );
+
         case "radio":
             return (
-                <div className="flex flex-col gap-3 mt-1">
-                    {schema.props.options?.map((opt, i) => (
-                        <label key={i} className="flex items-center gap-2 cursor-pointer group hover:bg-gray-50 p-1 -ml-1 rounded transition-colors">
-                            <input type="radio" name={`radio_${schema.id}`} value={opt.value} checked={value === opt.value} onChange={(e) => onChange(e.target.value)} className="w-4 h-4 text-brand accent-brand cursor-pointer" />
-                            <span className="text-sm text-gray-700">{opt.label}</span>
-                        </label>
-                    ))}
+                <div className="mt-1">
+                    <Radio.Group
+                        value={value}
+                        onChange={(e) => onChange(e.target.value)}
+                        options={schema.props.options}
+                    />
                 </div>
             );
+
         case "checkbox":
             return (
-                <div className="flex flex-col gap-3 mt-1">
-                    {schema.props.options?.map((opt, i) => {
-                        const currentArr = value || [];
-                        const isChecked = currentArr.includes(opt.value);
-                        return (
-                            <label key={i} className="flex items-center gap-2 cursor-pointer group hover:bg-gray-50 p-1 -ml-1 rounded transition-colors">
-                                <input type="checkbox" value={opt.value} checked={isChecked} onChange={(e) => {
-                                    const newArr = e.target.checked ? [...currentArr, opt.value] : currentArr.filter((v: string) => v !== opt.value);
-                                    onChange(newArr);
-                                }} className="w-4 h-4 text-brand rounded accent-brand cursor-pointer" />
-                                <span className="text-sm text-gray-700">{opt.label}</span>
-                            </label>
-                        );
-                    })}
+                <div className="mt-1">
+                    <Checkbox.Group
+                        value={value || []}
+                        onChange={(checkedValues) => onChange(checkedValues)}
+                        options={schema.props.options}
+                    />
                 </div>
             );
+
+        case "rate":
+            return (
+                <div className="mt-1">
+                    <Rate
+                        value={value || 0}
+                        onChange={(val) => onChange(val)}
+                        count={schema.props.maxRate || 5}
+                    />
+                </div>
+            );
+
+        case "switch":
+            return (
+                <div className="mt-1">
+                    <Switch
+                        checked={!!value}
+                        onChange={(checked) => onChange(checked)}
+                        checkedChildren={schema.props.activeText || '开启'}
+                        unCheckedChildren={schema.props.inactiveText || '关闭'}
+                    />
+                </div>
+            );
+
+        case "cascader":
+            return (
+                <Cascader
+                    options={schema.props.options as any}
+                    value={value || []}
+                    onChange={(val) => onChange(val)}
+                    placeholder="请选择级联项..."
+                    status={antStatus}
+                    className="w-full"
+                />
+            );
+
         case "upload":
             return (
-                <div className="w-full">
+                <div className="w-full mt-1">
                     <input type="file" id={`file_${schema.id}`} className="hidden" accept={schema.props.accept} onChange={(e) => { const file = e.target.files?.[0]; if (file) onChange(file.name); }} />
-                    <label htmlFor={`file_${schema.id}`} className={`w-full border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center cursor-pointer transition-all ${hasError ? "border-red-300 bg-red-50 hover:bg-red-100" : "border-gray-300 bg-gray-50 hover:bg-gray-100 hover:border-brand hover:shadow-sm"}`}>
+                    <label htmlFor={`file_${schema.id}`} className={`w-full border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center cursor-pointer transition-all ${hasError ? "border-red-300 bg-red-50 hover:bg-red-100" : "border-slate-300 bg-slate-50 hover:bg-slate-100 hover:border-brand hover:shadow-sm"}`}>
                         {value ? (
                             <div className="flex items-center gap-2 text-brand">
                                 <FileText className="w-6 h-6" />
@@ -100,44 +140,15 @@ export const FormControl: React.FC<FormControlProps> = ({ schema, value, hasErro
                             </div>
                         ) : (
                             <>
-                                <UploadCloud className="w-8 h-8 text-gray-400 mb-2" />
-                                <span className="text-sm text-gray-600 font-medium">点击或拖拽文件上传</span>
-                                <span className="text-xs text-gray-400 mt-1">支持 {schema.props.accept || "所有"} 格式文件</span>
+                                <UploadCloud className="w-8 h-8 text-slate-400 mb-2" />
+                                <span className="text-sm text-slate-600 font-medium">点击或拖拽文件上传</span>
+                                <span className="text-xs text-slate-400 mt-1">支持 {schema.props.accept || "所有"} 格式文件</span>
                             </>
                         )}
                     </label>
                 </div>
             );
-        case "rate":
-            return (
-                <div className="flex gap-1 items-center mt-1">
-                    {Array.from({ length: schema.props.maxRate || 5 }).map((_, i) => {
-                        const starValue = i + 1;
-                        const currentVal = value || 0;
-                        const isFilled = hoverValue ? starValue <= hoverValue : starValue <= currentVal;
-                        return (
-                            <Star key={i} className={`w-7 h-7 cursor-pointer transition-all hover:scale-110 ${isFilled ? "text-yellow-400 fill-yellow-400 drop-shadow-sm" : "text-gray-200 fill-gray-200"}`}
-                                onMouseEnter={() => setHoverValue(starValue)}
-                                onMouseLeave={() => setHoverValue(0)}
-                                onClick={() => onChange(starValue)} />
-                        )
-                    })}
-                    <span className="ml-3 text-sm text-yellow-600 font-bold bg-yellow-50 px-2 py-0.5 rounded">{value || 0}</span>
-                </div>
-            );
-        case "switch":
-            return (
-                <div className="flex items-center gap-3 mt-1 cursor-pointer" onClick={() => onChange(!value)}>
-                    <button type="button" role="switch" aria-checked={value || false} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${value ? "bg-brand shadow-inner" : "bg-gray-200"}`}>
-                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${value ? "translate-x-6" : "translate-x-1"}`} />
-                    </button>
-                    <span className={`text-sm font-medium ${value ? 'text-brand' : 'text-gray-500'}`}>{value ? (schema.props.activeText || '开启') : (schema.props.inactiveText || '关闭')}</span>
-                </div>
-            );
-        case "cascader":
-            return (
-                <Cascader options={schema.props.options as any} value={value || []} onChange={(val) => onChange(val)} placeholder="请选择级联项..." status={hasError ? "error" : ""} className="w-full" style={{ height: '42px' }} />
-            );
+
         default:
             return null;
     }

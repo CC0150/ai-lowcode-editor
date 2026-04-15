@@ -14,57 +14,120 @@ export const ExportModal: React.FC<Props> = ({ onClose }) => {
   // 1. 生成标准的 JSON Schema
   const jsonSchema = JSON.stringify(components, null, 2);
 
-  // 2. （硬核亮点）AST 简易编译：将 JSON 转化为真实的 React 源码
+  // 2. 生成基于 Ant Design 的 React 源码
   const generateReactCode = () => {
+    // 检查是否包含特定组件以按需引入
+    const hasDate = components.some(c => c.type === 'date');
+    const hasCascader = components.some(c => c.type === 'cascader');
+    const antComponents = Array.from(new Set([
+      'Form', 'Button', 'Input',
+      ...components.map(c => {
+        switch (c.type) {
+          case 'select': return 'Select';
+          case 'radio': return 'Radio';
+          case 'checkbox': return 'Checkbox';
+          case 'rate': return 'Rate';
+          case 'switch': return 'Switch';
+          case 'date': return 'DatePicker';
+          case 'cascader': return 'Cascader';
+          default: return '';
+        }
+      })
+    ])).filter(Boolean).join(', ');
+
     return `import React, { useState } from 'react';
+import { ${antComponents} } from 'antd';
+${hasDate ? "import dayjs from 'dayjs';" : ""}
 
 export default function GeneratedForm() {
-  const [formData, setFormData] = useState({});
+  const [form] = Form.useForm();
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log("提交的数据：", formData);
+  const onFinish = (values) => {
+    console.log("提交的数据：", values);
     // 这里可以接入真实的 API
   };
 
   return (
-    <form onSubmit={handleSubmit} className="p-6 max-w-2xl mx-auto bg-white rounded-xl shadow-md">
-      <h2 className="text-xl font-bold mb-6">动态生成表单</h2>
-      <div className="flex flex-col gap-4">
-        ${components.map(comp => {
-          // 处理显示逻辑
-          const condition = comp.visibleRule 
-            ? `formData['${comp.visibleRule.sourceId}'] === '${comp.visibleRule.value}'`
-            : 'true';
-
-          let inputCode = '';
-          if (comp.type === 'input') {
-            inputCode = `<input className="border p-2 rounded w-full" placeholder="${comp.props.placeholder || ''}" required={${comp.required}} onChange={e => setFormData({...formData, '${comp.id}': e.target.value})} />`;
-          } else if (comp.type === 'radio') {
-            inputCode = comp.props.options?.map(opt => 
-              `<label className="flex gap-2"><input type="radio" name="${comp.id}" value="${opt.value}" onChange={e => setFormData({...formData, '${comp.id}': e.target.value})} /> ${opt.label}</label>`
-            ).join('\\n          ');
-          } else if (comp.type === 'select') {
-            inputCode = `<select className="border p-2 rounded w-full" onChange={e => setFormData({...formData, '${comp.id}': e.target.value})}>
-            <option value="">请选择</option>
-            ${comp.props.options?.map(opt => `<option value="${opt.value}">${opt.label}</option>`).join('\\n            ')}
-          </select>`;
-          } else if (comp.type === 'button') {
-            inputCode = `<button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded mt-4 w-full">${comp.props.buttonText || '提交'}</button>`;
-          }
-
-          if (comp.type === 'button') return inputCode;
-
-          // 包装每个表单项（带逻辑判断）
-          return `{${condition} && (
-          <div className="flex flex-col gap-1">
-            <label className="font-medium text-sm">${comp.label} ${comp.required ? '<span className="text-red-500">*</span>' : ''}</label>
-            ${inputCode}
-          </div>
-        )}`;
-        }).join('\n        ')}
+    <div className="p-8 max-w-3xl mx-auto bg-white rounded-xl shadow-lg mt-10">
+      <div className="mb-8 border-b pb-4">
+        <h2 className="text-2xl font-bold text-gray-800">预览表单</h2>
+        <p className="text-gray-500 text-sm mt-1">此表单由 AI 低代码平台自动生成</p>
       </div>
-    </form>
+
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={onFinish}
+        initialValues={{}}
+        scrollToFirstError
+      >
+        ${components.map(comp => {
+      // 处理显示逻辑
+      const condition = comp.visibleRule
+        ? `form.getFieldValue('${comp.visibleRule.sourceId}') === '${comp.visibleRule.value}'`
+        : 'true';
+
+      let inputNode = '';
+      const commonProps = `placeholder="${comp.props.placeholder || ''}"`;
+
+      switch (comp.type) {
+        case 'input':
+          inputNode = `<Input ${commonProps} />`;
+          break;
+        case 'textarea':
+          inputNode = `<Input.TextArea ${commonProps} rows={4} />`;
+          break;
+        case 'select':
+          inputNode = `<Select ${commonProps} options={${JSON.stringify(comp.props.options)}} />`;
+          break;
+        case 'radio':
+          inputNode = `<Radio.Group options={${JSON.stringify(comp.props.options)}} />`;
+          break;
+        case 'checkbox':
+          inputNode = `<Checkbox.Group options={${JSON.stringify(comp.props.options)}} />`;
+          break;
+        case 'rate':
+          inputNode = `<Rate count={${comp.props.maxRate || 5}} />`;
+          break;
+        case 'switch':
+          inputNode = `<Switch checkedChildren="${comp.props.activeText || '开'}" unCheckedChildren="${comp.props.inactiveText || '关'}" />`;
+          break;
+        case 'date':
+          inputNode = `<DatePicker className="w-full" />`;
+          break;
+        case 'cascader':
+          inputNode = `<Cascader options={${JSON.stringify(comp.props.options)}} placeholder="请选择" className="w-full" />`;
+          break;
+        case 'button':
+          return `<Form.Item>
+          <Button type="primary" htmlType="submit" size="large" block>
+            ${comp.props.buttonText || '提交'}
+          </Button>
+        </Form.Item>`;
+        default:
+          return '';
+      }
+
+      // 包装 Form.Item
+      return `<Form.Item
+          noStyle
+          shouldUpdate={(prevValues, currentValues) => prevValues.${comp.visibleRule?.sourceId} !== currentValues.${comp.visibleRule?.sourceId}}
+        >
+          {() => (
+            ${condition} ? (
+              <Form.Item
+                name="${comp.id}"
+                label="${comp.label}"
+                rules={[{ required: ${!!comp.required}, message: '请输入${comp.label}' }]}
+              >
+                ${inputNode}
+              </Form.Item>
+            ) : null
+          )}
+        </Form.Item>`;
+    }).join('\n        ')}
+      </Form>
+    </div>
   );
 }
 `;
@@ -79,8 +142,8 @@ export default function GeneratedForm() {
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
-        
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+
         {/* 头部 */}
         <header className="px-6 py-4 border-b flex items-center justify-between bg-gray-50/50">
           <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
@@ -92,18 +155,18 @@ export default function GeneratedForm() {
         </header>
 
         {/* 内容区 */}
-        <div className="flex h-[600px]">
+        <div className="flex h-[650px]">
           {/* 左侧侧边栏切换 Tab */}
-          <div className="w-48 border-r bg-gray-50 flex flex-col p-2 gap-1">
-            <button 
+          <div className="w-52 border-r bg-gray-50 flex flex-col p-3 gap-2">
+            <button
               onClick={() => setActiveTab('json')}
-              className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'json' ? 'bg-white text-brand shadow-sm border border-gray-200' : 'text-gray-600 hover:bg-gray-100'}`}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${activeTab === 'json' ? 'bg-white text-brand shadow-sm border border-gray-200' : 'text-gray-600 hover:bg-gray-200'}`}
             >
               <FileJson className="w-4 h-4" /> JSON Schema
             </button>
-            <button 
+            <button
               onClick={() => setActiveTab('react')}
-              className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'react' ? 'bg-white text-brand shadow-sm border border-gray-200' : 'text-gray-600 hover:bg-gray-100'}`}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${activeTab === 'react' ? 'bg-white text-brand shadow-sm border border-gray-200' : 'text-gray-600 hover:bg-gray-200'}`}
             >
               <Code2 className="w-4 h-4" /> React 源码
             </button>
@@ -111,15 +174,19 @@ export default function GeneratedForm() {
 
           {/* 右侧代码展示区 */}
           <div className="flex-1 flex flex-col relative bg-[#1E1E1E] min-h-0 min-w-0">
-            <button 
-              onClick={handleCopy}
-              className="absolute z-10 top-4 right-4 bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-md flex items-center gap-1.5 text-xs transition-colors backdrop-blur-md"
-            >
-              {copied ? <CheckCircle2 className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
-              {copied ? '已复制' : '复制代码'}
-            </button>
-            <div className="flex-1 overflow-auto p-6 pt-16 w-full">
-              <pre className="text-[13px] font-mono text-gray-300 leading-relaxed overflow-x-auto">
+            <div className="absolute top-4 right-6 flex items-center gap-3 z-10">
+              <span className="text-[10px] text-gray-500 font-mono uppercase tracking-widest">TSX / JSON</span>
+              <button
+                onClick={handleCopy}
+                className="bg-brand text-white px-4 py-1.5 rounded-md flex items-center gap-2 text-xs font-bold hover:bg-brand/90 transition-all shadow-lg active:scale-95"
+              >
+                {copied ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                {copied ? '已复制' : '复制代码'}
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-auto p-6 pt-16 w-full custom-scrollbar">
+              <pre className="text-[13px] font-mono text-gray-300 leading-relaxed">
                 <code>{activeTab === 'json' ? jsonSchema : generateReactCode()}</code>
               </pre>
             </div>

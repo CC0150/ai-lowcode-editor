@@ -71,10 +71,8 @@ export function AIGenerator() {
     }
   };
 
-  // === 将弹窗内容单独抽离，方便后续传入 Portal ===
   const modalContent = isOpen ? (
     <div 
-      // 【核心修改点】：降低了背景暗度(bg-slate-900/5)，降低了模糊度(backdrop-blur-md)
       className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/5 backdrop-blur-md transition-all p-4 animate-in fade-in duration-200"
       onClick={() => setIsOpen(false)}
     >
