@@ -7,6 +7,7 @@ import {
     Radio,
     Checkbox,
     Rate,
+    Button,
     Switch,
     Cascader,
     DatePicker
@@ -113,6 +114,19 @@ export const FormControl: React.FC<FormControlProps> = ({ schema, value, hasErro
                         unCheckedChildren={schema.props.inactiveText || '关闭'}
                     />
                 </div>
+            );
+
+        case "button":
+            return (
+                <Button 
+                    type="primary" 
+                    block 
+                    size="large"
+                    style={{ height: '42px', marginTop: '8px' }}
+                    className="shadow-sm font-medium"
+                >
+                    {schema.props.buttonText || "提交"}
+                </Button>
             );
 
         case "cascader":

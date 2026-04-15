@@ -110,7 +110,7 @@ export const FormPreview: React.FC<Props> = ({ onBack, overrideComponents, isEmb
               if (!checkIsVisible(comp)) return null;
 
               if (comp.type === "button") {
-                if (isEmbedded) return null;
+                // if (isEmbedded) return null;
                 return (
                   <div key={comp.id} className="pt-4 mt-4 border-t border-gray-100">
                     <button type="submit" className="w-full bg-brand text-white py-3.5 rounded-xl font-bold text-[15px] shadow-lg shadow-brand/20 hover:bg-brand/90 hover:shadow-brand/30 transition-all active:scale-[0.99]">
