@@ -2,12 +2,25 @@ import React from "react";
 import { useEditorStore } from "../store/useEditorStore";
 import { SortableWrapper } from "./SortableWrapper";
 import { UploadCloud, Star, ListTree } from "lucide-react";
-import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
-import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 
 export const EditorCanvas: React.FC = () => {
-  const { components, selectedId, selectComponent, reorderComponents } = useEditorStore();
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const { components, selectedId, selectComponent, reorderComponents } =
+    useEditorStore();
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  );
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -19,40 +32,108 @@ export const EditorCanvas: React.FC = () => {
   };
 
   return (
-    <section className="flex-1 bg-gray-100 p-8 overflow-auto flex items-start justify-center transition-all duration-300 custom-scrollbar" onClick={() => selectComponent(null)}>
-      <div className="w-full max-w-2xl bg-white shadow-xl rounded-xl min-h-[600px] p-10 ring-1 ring-gray-200/50" onClick={(e) => e.stopPropagation()}>
+    <section
+      className="flex-1 bg-gray-100 p-8 overflow-auto flex items-start justify-center transition-all duration-300 custom-scrollbar"
+      onClick={() => selectComponent(null)}
+    >
+      <div
+        className="w-full max-w-2xl bg-white shadow-xl rounded-xl min-h-[560px] p-10 ring-1 ring-gray-200/50"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="border-b-2 border-gray-100 pb-4 mb-8">
-          <h1 className="text-2xl font-bold text-center text-gray-800">用户调研问卷</h1>
-          <p className="text-gray-500 text-sm text-center mt-2">请如实填写以下信息</p>
+          <h1 className="text-2xl font-bold text-center text-gray-800">
+            用户调研问卷
+          </h1>
+          <p className="text-gray-500 text-sm text-center mt-2">
+            请如实填写以下信息
+          </p>
         </div>
 
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={components.map((c) => c.id)} strategy={verticalListSortingStrategy}>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={components.map((c) => c.id)}
+            strategy={verticalListSortingStrategy}
+          >
             {components.map((comp, index) => (
-              <SortableWrapper key={comp.id} id={comp.id} isSelected={selectedId === comp.id} onClick={(e) => { e.stopPropagation(); selectComponent(comp.id); }}>
+              <SortableWrapper
+                key={comp.id}
+                id={comp.id}
+                isSelected={selectedId === comp.id}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  selectComponent(comp.id);
+                }}
+              >
                 <div className="flex flex-col gap-2 pointer-events-none">
                   {comp.type !== "button" && (
                     <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
-                      {index + 1}. {comp.label} {comp.required && <span className="text-red-500">*</span>}
+                      {index + 1}. {comp.label}{" "}
+                      {comp.required && <span className="text-red-500">*</span>}
                     </label>
                   )}
 
                   {/* 基础组件 */}
-                  {comp.type === "input" && <input type="text" placeholder={comp.props.placeholder} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-gray-50" readOnly />}
-                  {comp.type === "textarea" && <textarea placeholder={comp.props.placeholder} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-gray-50 resize-none h-20" readOnly />}
-                  {comp.type === "date" && <input type="date" className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-gray-50 text-gray-400" readOnly />}
-                  {comp.type === "select" && <select className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-gray-50" disabled><option>请选择...</option></select>}
+                  {comp.type === "input" && (
+                    <input
+                      type="text"
+                      placeholder={comp.props.placeholder}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-gray-50"
+                      readOnly
+                    />
+                  )}
+                  {comp.type === "textarea" && (
+                    <textarea
+                      placeholder={comp.props.placeholder}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-gray-50 resize-none h-20"
+                      readOnly
+                    />
+                  )}
+                  {comp.type === "date" && (
+                    <input
+                      type="date"
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-gray-50 text-gray-400"
+                      readOnly
+                    />
+                  )}
+                  {comp.type === "select" && (
+                    <select
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-gray-50"
+                      disabled
+                    >
+                      <option>请选择...</option>
+                    </select>
+                  )}
                   {comp.type === "radio" && (
                     <div className="flex gap-4 mt-1">
-                      {(comp.props.options?.length ? comp.props.options : [{label: '选项一'},{label:'选项二'}]).map((opt, i) => (
-                        <label key={i} className="flex items-center gap-2"><input type="radio" className="w-4 h-4" readOnly/><span className="text-sm">{opt.label}</span></label>
+                      {(comp.props.options?.length
+                        ? comp.props.options
+                        : [{ label: "选项一" }, { label: "选项二" }]
+                      ).map((opt, i) => (
+                        <label key={i} className="flex items-center gap-2">
+                          <input type="radio" className="w-4 h-4" readOnly />
+                          <span className="text-sm">{opt.label}</span>
+                        </label>
                       ))}
                     </div>
                   )}
                   {comp.type === "checkbox" && (
                     <div className="flex gap-4 mt-1">
-                      {(comp.props.options?.length ? comp.props.options : [{label: '选项一'},{label:'选项二'}]).map((opt, i) => (
-                        <label key={i} className="flex items-center gap-2"><input type="checkbox" className="w-4 h-4 rounded" readOnly/><span className="text-sm">{opt.label}</span></label>
+                      {(comp.props.options?.length
+                        ? comp.props.options
+                        : [{ label: "选项一" }, { label: "选项二" }]
+                      ).map((opt, i) => (
+                        <label key={i} className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            className="w-4 h-4 rounded"
+                            readOnly
+                          />
+                          <span className="text-sm">{opt.label}</span>
+                        </label>
                       ))}
                     </div>
                   )}
@@ -66,9 +147,14 @@ export const EditorCanvas: React.FC = () => {
                   )}
                   {comp.type === "rate" && (
                     <div className="flex gap-1">
-                      {Array.from({ length: comp.props.maxRate || 5 }).map((_, i) => (
-                        <Star key={i} className="w-6 h-6 text-gray-300 fill-gray-200" />
-                      ))}
+                      {Array.from({ length: comp.props.maxRate || 5 }).map(
+                        (_, i) => (
+                          <Star
+                            key={i}
+                            className="w-6 h-6 text-gray-300 fill-gray-200"
+                          />
+                        ),
+                      )}
                     </div>
                   )}
                   {comp.type === "switch" && (
@@ -84,7 +170,11 @@ export const EditorCanvas: React.FC = () => {
                   )}
 
                   {/* 系统组件 */}
-                  {comp.type === "button" && <button className="w-full bg-brand text-white py-2.5 rounded-md font-medium mt-4 shadow-sm">{comp.props.buttonText}</button>}
+                  {comp.type === "button" && (
+                    <button className="w-full bg-brand text-white py-2.5 rounded-md font-medium mt-4 shadow-sm">
+                      {comp.props.buttonText}
+                    </button>
+                  )}
                 </div>
               </SortableWrapper>
             ))}
@@ -92,7 +182,9 @@ export const EditorCanvas: React.FC = () => {
         </DndContext>
 
         {components.length === 0 && (
-          <div className="text-center text-gray-400 mt-10 border-2 border-dashed border-gray-200 py-16 rounded-xl bg-gray-50/50">点击左侧组件，开始搭建表单</div>
+          <div className="text-center text-gray-400 mt-10 border-2 border-dashed border-gray-200 py-16 rounded-xl bg-gray-50/50">
+            点击左侧组件，开始搭建表单
+          </div>
         )}
       </div>
     </section>
