@@ -18,7 +18,11 @@ export default defineConfig([
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser,
-    },
+      parserOptions: {
+        tsconfigRootDir: path.join(__dirname, 'client'),
+        projectService: true,
+      },
+         },
      rules: {
       // '@typescript-eslint/no-explicit-any': 'off',  // 完全禁用
       // 或者改为警告

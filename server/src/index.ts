@@ -11,8 +11,8 @@ app.use(express.json());
 
 // 初始化 DeepSeek 客户端
 const openai = new OpenAI({
-  apiKey: process.env.AI_API_KEY,
-  baseURL: process.env.AI_BASE_URL || "https://api.deepseek.com",
+    apiKey: process.env.AI_API_KEY,
+    baseURL: process.env.AI_BASE_URL || "https://api.deepseek.com",
 });
 
 // 构建 System Prompt (把接口定义告诉大模型)
@@ -48,38 +48,38 @@ interface ComponentSchema {
 `;
 
 app.post("/api/generate-form", async (req, res) => {
-  const { prompt } = req.body;
+    const { prompt } = req.body;
 
-  if (!prompt) {
-    return res.status(400).json({ success: false, error: "请输入描述需求" });
-  }
+    if (!prompt) {
+        return res.status(400).json({ success: false, error: "请输入描述需求" });
+    }
 
-  try {
-    const completion = await openai.chat.completions.create({
-      model: "deepseek-chat", // DeepSeek V3 核心模型
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: prompt },
-      ],
-      response_format: { type: "json_object" }, // 强制返回 JSON 对象
-    });
+    try {
+        const completion = await openai.chat.completions.create({
+            model: "deepseek-chat", // DeepSeek V3 核心模型
+            messages: [
+                { role: "system", content: SYSTEM_PROMPT },
+                { role: "user", content: prompt },
+            ],
+            response_format: { type: "json_object" }, // 强制返回 JSON 对象
+        });
 
-    const aiContent =
-      completion.choices?.[0]?.message?.content || '{"components": []}';
+        const aiContent =
+            completion.choices?.[0]?.message?.content || '{"components": []}';
 
-    // 解析返回的 JSON
-    const parsedData = JSON.parse(aiContent);
+        // 解析返回的 JSON
+        const parsedData = JSON.parse(aiContent);
 
-    res.json({ success: true, data: parsedData.components });
-  } catch (error) {
-    console.error("AI Generation Error:", error);
-    res
-      .status(500)
-      .json({ success: false, error: "大模型生成失败，请查看后端控制台日志" });
-  }
+        res.json({ success: true, data: parsedData.components });
+    } catch (error) {
+        console.error("AI Generation Error:", error);
+        res
+            .status(500)
+            .json({ success: false, error: "大模型生成失败，请查看后端控制台日志" });
+    }
 });
 
 const PORT = 3001;
 app.listen(PORT, () => {
-  console.log(`后端服务已启动: http://localhost:${PORT}`);
+    console.log(`后端服务已启动: http://localhost:${PORT}`);
 });

@@ -1,22 +1,45 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useEditorStore } from "../store/useEditorStore";
 import { type ComponentSchema } from "../types/editor";
-import { FormPreview } from "./FormPreview"; // 引入你已经写好的预览组件
+import { FormPreview } from "./FormPreview";
+import { Sparkles, Command, Loader2, CornerDownLeft, X } from "lucide-react";
 
 export function AIGenerator() {
+  const [isOpen, setIsOpen] = useState(false);
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
-  // 用于存放 AI 返回的临时数据，如果不为 null，则代表 Modal 应该打开
-  const [previewData, setPreviewData] = useState<ComponentSchema[] | null>(
-    null,
-  );
+  const [previewData, setPreviewData] = useState<ComponentSchema[] | null>(null);
 
   const applyAIGenerated = useEditorStore((state) => state.applyAIGenerated);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // 1. 发送给后端请求 AI 数据
+  // 1. 监听全局快捷键 Ctrl+K / Cmd+K
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setIsOpen(true);
+      }
+      if (e.key === "Escape") {
+        setIsOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  // 2. 弹窗打开时自动聚焦输入框
+  useEffect(() => {
+    if (isOpen) {
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  }, [isOpen]);
+
   const handleGenerate = async () => {
-    if (!prompt.trim()) return;
+    if (!prompt.trim() || loading) return;
     setLoading(true);
+    setPreviewData(null); // 清空上一次的预览
     try {
       const response = await fetch("http://localhost:3001/api/generate-form", {
         method: "POST",
@@ -27,127 +50,132 @@ export function AIGenerator() {
       const result = await response.json();
 
       if (result.success && Array.isArray(result.data)) {
-        // 请求成功，存入 previewData 打开弹窗
         setPreviewData(result.data);
       } else {
         alert("AI 生成失败：" + result.error);
       }
     } catch (error) {
-      console.error("请求后端异常:", error);
-      alert("请求后端接口失败，请确认 server 是否启动");
+      console.error("请求异常:", error);
+      alert("请求后端接口失败，请确认服务是否启动");
     } finally {
       setLoading(false);
     }
   };
 
-  // 2. 用户确认使用此表单
   const handleConfirm = () => {
     if (previewData) {
-      applyAIGenerated(previewData); // 覆盖到真实画布
-      setPreviewData(null); // 关闭 Modal
-      setPrompt(""); // 清空输入框
+      applyAIGenerated(previewData);
+      setIsOpen(false); // 关闭弹窗
+      setPreviewData(null);
+      setPrompt("");
     }
   };
 
-  return (
-    <div className="p-4 border-b border-gray-200 bg-blue-50/50">
-      <div className="text-sm font-bold text-blue-600 mb-2">✨ AI 智能生成</div>
-      <textarea
-        className="w-full text-sm p-2 border rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-blue-400"
-        rows={3}
-        placeholder="例如：创建一个用户注册表单，包含姓名、邮箱、密码..."
-        value={prompt}
-        onChange={(e) => setPrompt(e.target.value)}
-      />
-      <button
-        className="mt-2 w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-md text-sm font-medium disabled:bg-blue-300 flex items-center justify-center transition-colors"
-        onClick={handleGenerate}
-        disabled={loading || !prompt.trim()}
+  // === 将弹窗内容单独抽离，方便后续传入 Portal ===
+  const modalContent = isOpen ? (
+    <div 
+      // 【核心修改点】：降低了背景暗度(bg-slate-900/5)，降低了模糊度(backdrop-blur-md)
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/5 backdrop-blur-md transition-all p-4 animate-in fade-in duration-200"
+      onClick={() => setIsOpen(false)}
+    >
+      <div 
+        className="w-full max-w-[700px] bg-white/95 rounded-2xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.15)] overflow-hidden flex flex-col border border-slate-200/50 animate-in zoom-in-95 duration-200 ease-out"
+        onClick={(e) => e.stopPropagation()} 
       >
-        {loading ? (
+        <div className="flex items-center px-6 py-5">
+          {loading ? (
+            <Loader2 className="w-7 h-7 text-indigo-500 animate-spin mr-4" />
+          ) : (
+            <Sparkles className="w-7 h-7 text-indigo-600 mr-4 drop-shadow-sm" />
+          )}
+          <textarea
+            ref={inputRef}
+            className="flex-1 bg-transparent text-xl text-slate-800 placeholder-slate-300 outline-none resize-none font-medium leading-relaxed"
+            rows={prompt.length > 30 ? 2 : 1}
+            placeholder="例如：创建一个面试登记表，包含姓名、手机号和技术栈多选框..."
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleGenerate();
+              }
+            }}
+          />
+          {prompt.length > 0 && !loading && (
+            <button onClick={() => setPrompt("")} className="ml-2 p-1 text-slate-300 hover:text-slate-500 transition-colors">
+              <X className="w-5 h-5" />
+            </button>
+          )}
+        </div>
+
+        {(previewData || loading) && (
           <>
-            <svg
-              className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              ></circle>
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
-            </svg>
-            AI 正在生成中...
+            <div className="h-[1px] w-full bg-slate-100" />
+            <div className="flex-1 overflow-y-auto bg-slate-50/80 p-6 custom-scrollbar relative max-h-[60vh]">
+              {loading ? (
+                <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-4 py-12">
+                  <div className="relative">
+                     <div className="w-12 h-12 border-4 border-indigo-100 rounded-full animate-spin border-t-indigo-500"></div>
+                     <Sparkles className="w-5 h-5 text-indigo-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                  </div>
+                  <p className="text-sm font-medium animate-pulse">正在利用大模型编排组件...</p>
+                </div>
+              ) : (
+                previewData && (
+                  <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden relative">
+                    <FormPreview overrideComponents={previewData} isEmbedded={true} />
+                  </div>
+                )
+              )}
+            </div>
+
+            <div className="px-6 py-4 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+              <div className="flex items-center gap-5">
+                <span className="flex items-center gap-1.5">
+                  <kbd className="bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200 font-mono shadow-sm">ESC</kbd> 
+                  取消
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <kbd className="bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200 font-mono shadow-sm">↵</kbd> 
+                  生成
+                </span>
+              </div>
+              
+              {previewData && !loading && (
+                <button
+                  onClick={handleConfirm}
+                  className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg font-medium transition-colors shadow-md active:scale-95"
+                >
+                  确认导入 <CornerDownLeft className="w-4 h-4" />
+                </button>
+              )}
+            </div>
           </>
-        ) : (
-          "一键生成表单"
         )}
+      </div>
+    </div>
+  ) : null;
+
+  return (
+    <>
+      <button
+        onClick={() => setIsOpen(true)}
+        className="flex items-center justify-between w-80 px-3 py-1.5 bg-slate-100/60 hover:bg-slate-100 border border-slate-200/60 rounded-lg text-sm text-slate-500 transition-all backdrop-blur-md group focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+      >
+        <div className="flex items-center gap-2.5">
+          <Sparkles className="w-4 h-4 text-indigo-500 group-hover:scale-110 transition-transform" />
+          <span className="text-slate-400 group-hover:text-slate-600 transition-colors">
+            让 AI 帮你生成表单...
+          </span>
+        </div>
+        <div className="flex items-center gap-1 text-[10px] font-mono font-medium text-slate-400 bg-white px-1.5 py-0.5 rounded shadow-sm border border-slate-200">
+          <Command className="w-3 h-3" /> K
+        </div>
       </button>
 
-      {/* AI 预览 Modal */}
-      {previewData && (
-        <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-2xl w-[600px] max-h-[85vh] flex flex-col overflow-hidden">
-            <div className="p-5 border-b flex justify-between items-center bg-gray-50/50">
-              <div>
-                <h3 className="font-bold text-lg text-gray-800">
-                  ✨ AI 智能预览
-                </h3>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  你可以试填表单，确认联动逻辑无误后再应用
-                </p>
-              </div>
-              <button
-                onClick={() => setPreviewData(null)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M6 18L18 6M6 6l12 12"
-                  ></path>
-                </svg>
-              </button>
-            </div>
-
-            {/* 核心改变：复用 FormPreview，传入 overrideComponents，并且开启 isEmbedded 模式 */}
-            <div className="overflow-y-auto flex-1 custom-scrollbar bg-gray-50/50 relative">
-              <FormPreview overrideComponents={previewData} isEmbedded={true} />
-            </div>
-
-            <div className="p-5 border-t flex justify-end gap-3 bg-white">
-              <button
-                className="px-6 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 hover:border-gray-400 transition-all"
-                onClick={() => setPreviewData(null)}
-              >
-                重新输入
-              </button>
-              <button
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 shadow-md shadow-blue-200 transition-all"
-                onClick={handleConfirm}
-              >
-                确认使用，开始编辑
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+      {/* 使用 createPortal 将弹窗挂载到 HTML body 的最外层 */}
+      {createPortal(modalContent, document.body)}
+    </>
   );
 }

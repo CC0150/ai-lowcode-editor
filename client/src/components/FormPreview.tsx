@@ -1,22 +1,16 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { useEditorStore } from "../store/useEditorStore";
 import { ArrowLeft, CheckCircle2, AlertCircle } from "lucide-react";
-import { type ComponentSchema } from "../types/editor"; // 引入类型定义
+import { type ComponentSchema } from "../types/editor";
+import { FormControl } from "./FormControl"; // 引入刚才封装好的组件
 
 interface Props {
   onBack?: () => void;
-  // 新增：允许从外部传入组件列表（用于 AI 预览）
   overrideComponents?: ComponentSchema[];
-  // 新增：是否为嵌入模式（如果在 AI 弹窗里，隐藏全屏背景和头部导航）
   isEmbedded?: boolean;
 }
 
-export const FormPreview: React.FC<Props> = ({
-  onBack,
-  overrideComponents,
-  isEmbedded = false,
-}) => {
-  // 如果有传入 overrideComponents 则优先使用，否则使用全局 Store 的数据
+export const FormPreview: React.FC<Props> = ({ onBack, overrideComponents, isEmbedded = false }) => {
   const { components: storeComponents } = useEditorStore();
   const components = overrideComponents || storeComponents;
 
@@ -24,336 +18,133 @@ export const FormPreview: React.FC<Props> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitted, setIsSubmitted] = useState(false);
 
+  const fieldRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
   const handleInputChange = (id: string, value: any) => {
     setFormData((prev) => ({ ...prev, [id]: value }));
-    // 当用户重新输入时，清除该字段的错误红框
     if (errors[id]) {
       setErrors((prev) => ({ ...prev, [id]: undefined }) as any);
     }
   };
 
+  const checkIsVisible = (comp: ComponentSchema) => {
+    if (!comp.visibleRule || !comp.visibleRule.sourceId) return true;
+    return formData[comp.visibleRule.sourceId] === comp.visibleRule.value;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const newErrors: Record<string, string> = {};
-    let hasError = false;
+    let firstErrorId: string | null = null;
 
-    // === 核心高光：校验管道 (Validation Pipeline) ===
     components.forEach((comp) => {
-      // 1. 如果组件被逻辑隐藏，则跳过校验
-      if (comp.visibleRule && comp.visibleRule.sourceId) {
-        if (formData[comp.visibleRule.sourceId] !== comp.visibleRule.value)
-          return;
-      }
+      if (!checkIsVisible(comp)) return;
 
-      const val = formData[comp.id] || "";
+      const val = formData[comp.id];
+      const isEmpty = val === undefined || val === null || val === "" || (Array.isArray(val) && val.length === 0);
 
-      // 2. 必填校验
-      if (
-        comp.required &&
-        comp.type !== "button" &&
-        (!val || val.length === 0)
-      ) {
+      if (comp.required && comp.type !== "button" && comp.type !== "switch" && isEmpty) {
         newErrors[comp.id] = "此项为必填项";
-        hasError = true;
-      }
-      // 3. 正则表达式校验 (仅当用户填了内容，且配置了正则时执行)
-      else if (val && comp.validation?.regex) {
+        if (!firstErrorId) firstErrorId = comp.id;
+      } else if (!isEmpty && typeof val === 'string' && comp.validation?.regex) {
         try {
-          const regex = new RegExp(comp.validation.regex);
-          if (!regex.test(val)) {
+          if (!new RegExp(comp.validation.regex).test(val)) {
             newErrors[comp.id] = comp.validation.message || "格式不正确";
-            hasError = true;
+            if (!firstErrorId) firstErrorId = comp.id;
           }
-        } catch (err) {
-          console.error(`Invalid regex for ${comp.label}:`, err);
-        }
+        } catch (err) { }
       }
     });
 
-    if (hasError) {
+    if (firstErrorId) {
       setErrors(newErrors);
-      return; // 阻止提交
+      fieldRefs.current[firstErrorId]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
     }
 
-    console.log("=== 提交的表单 JSON 数据 ===");
-    console.log(JSON.stringify(formData, null, 2));
+    console.log("=== 提交的表单数据 ===", formData);
     setIsSubmitted(true);
   };
 
-  // 提交成功界面处理
   if (isSubmitted) {
-    if (isEmbedded) {
-      return (
-        <div className="flex flex-col items-center justify-center p-12">
-          <CheckCircle2 className="w-12 h-12 text-green-500 mb-2" />
-          <p className="text-gray-800 font-medium">校验通过，逻辑运行正常！</p>
-          <button
-            onClick={() => setIsSubmitted(false)}
-            className="mt-4 text-brand text-sm hover:underline"
-          >
-            返回重新试填
+    return (
+      <div className={`${isEmbedded ? 'w-full h-full p-12' : 'flex-1 h-full absolute inset-0 z-50 bg-gray-50'} flex flex-col items-center justify-center`}>
+        <div className="bg-white p-8 rounded-2xl shadow-sm flex flex-col items-center max-w-sm w-full text-center border border-gray-100">
+          <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mb-4">
+            <CheckCircle2 className="w-10 h-10 text-green-500" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-800">提交成功</h2>
+          <p className="text-gray-500 text-sm mt-2">{isEmbedded ? "校验通过，逻辑运行正常！" : "控制台已打印收集到的受控数据。"}</p>
+          <button onClick={isEmbedded ? () => setIsSubmitted(false) : onBack} className="mt-8 px-8 py-2.5 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand/90 transition-colors shadow-sm w-full">
+            {isEmbedded ? "返回重新试填" : "返回编辑器"}
           </button>
         </div>
-      );
-    }
-
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-gray-50 h-full absolute inset-0 z-50">
-        <CheckCircle2 className="w-16 h-16 text-green-500 mb-4" />
-        <h2 className="text-2xl font-bold text-gray-800">提交成功！</h2>
-        <p className="text-gray-500 mt-2">控制台已打印收集到的受控数据。</p>
-        <button
-          onClick={onBack}
-          className="mt-8 px-6 py-2 bg-brand text-white rounded-md hover:bg-brand/90 transition-colors"
-        >
-          返回编辑器
-        </button>
       </div>
     );
   }
 
   return (
-    <div
-      className={
-        isEmbedded
-          ? "w-full"
-          : "flex-1 bg-gray-100 overflow-auto flex flex-col h-full w-full absolute inset-0 z-50"
-      }
-    >
-      {/* 嵌入模式下隐藏顶部栏 */}
+    <div className={isEmbedded ? "w-full h-full relative" : "flex-1 bg-gray-100 overflow-auto flex flex-col h-full w-full absolute inset-0 z-50"}>
       {!isEmbedded && (
-        <header className="h-14 bg-white border-b flex items-center px-6 sticky top-0 z-10 shadow-sm">
-          <button
-            onClick={onBack}
-            className="flex items-center gap-2 text-gray-600 hover:text-brand transition-colors text-sm font-medium"
-          >
+        <header className="shrink-0 h-14 bg-white flex items-center px-6 sticky top-0 z-20 shadow-sm">
+          <button onClick={onBack} className="flex items-center gap-2 text-gray-600 hover:text-brand transition-colors text-sm font-medium cursor-pointer">
             <ArrowLeft className="w-4 h-4" /> 退出预览
           </button>
-          <div className="mx-auto flex gap-2">
-            <span className="px-3 py-1 bg-green-100 text-green-700 text-xs rounded-full font-semibold border border-green-200">
-              🟢 真实答题模式 (带高阶校验)
-            </span>
-          </div>
-          <div className="w-20"></div>
         </header>
       )}
 
-      <div
-        className={
-          isEmbedded
-            ? "p-6 flex justify-center"
-            : "flex-1 p-8 flex justify-center"
-        }
-      >
-        <form
-          onSubmit={handleSubmit}
-          className={
-            isEmbedded
-              ? "w-full max-w-2xl bg-white rounded-xl h-fit"
-              : "w-full max-w-2xl bg-white shadow-xl rounded-xl p-10 h-fit"
-          }
-        >
-          {/* 嵌入模式下隐藏大标题 */}
+      <div className={isEmbedded ? "p-6 flex justify-center pb-24" : "flex-1 p-8 flex justify-center pb-32"}>
+        <form onSubmit={handleSubmit} className={isEmbedded ? "w-full max-w-2xl bg-white rounded-xl h-fit" : "w-full max-w-2xl bg-white shadow-xl shadow-gray-200/50 rounded-2xl p-10 h-fit border border-gray-100"}>
+
           {!isEmbedded && (
-            <div className="border-b-2 border-gray-100 pb-4 mb-8">
-              <h1 className="text-2xl font-bold text-center text-gray-800">
-                用户调研问卷
-              </h1>
+            <div className="border-b-2 border-gray-100 pb-5 mb-8">
+              <h1 className="text-3xl font-extrabold text-center text-gray-800 tracking-tight">表单预览模式</h1>
+              <p className="text-center text-gray-400 text-sm mt-2">真实校验环境，尝试触发错误或完成提交</p>
             </div>
           )}
 
-          {components.length === 0 && isEmbedded && (
-            <div className="text-center text-gray-400 py-10">
-              AI 未生成任何组件内容
-            </div>
-          )}
+          {components.length === 0 && isEmbedded && <div className="text-center text-gray-400 py-10">AI 未生成任何组件内容</div>}
 
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-7">
             {components.map((comp, index) => {
-              // 逻辑隐藏判断
-              const isVisible = () => {
-                if (!comp.visibleRule || !comp.visibleRule.sourceId)
-                  return true;
-                return (
-                  formData[comp.visibleRule.sourceId] === comp.visibleRule.value
-                );
-              };
-              if (!isVisible()) return null;
+              if (!checkIsVisible(comp)) return null;
 
-              // 在 AI 预览弹窗中，隐藏提交按钮，避免误触
               if (comp.type === "button") {
                 if (isEmbedded) return null;
                 return (
-                  <button
-                    key={comp.id}
-                    type="submit"
-                    className="w-full bg-brand text-white py-3 rounded-md font-bold mt-4 shadow-md hover:bg-brand/90"
-                  >
-                    {comp.props.buttonText || "提交表单"}
-                  </button>
+                  <div key={comp.id} className="pt-4 mt-4 border-t border-gray-100">
+                    <button type="submit" className="w-full bg-brand text-white py-3.5 rounded-xl font-bold text-[15px] shadow-lg shadow-brand/20 hover:bg-brand/90 hover:shadow-brand/30 transition-all active:scale-[0.99]">
+                      {comp.props.buttonText || "提交表单"}
+                    </button>
+                  </div>
                 );
               }
 
-              // 判断当前项是否有错误
               const hasError = !!errors[comp.id];
 
               return (
                 <div
                   key={comp.id}
-                  className="flex flex-col gap-2 animate-in fade-in slide-in-from-top-4 duration-300"
+                  ref={(el) => { (fieldRefs.current[comp.id] = el) }}
+                  className={`flex flex-col gap-2 p-4 -mx-4 rounded-xl transition-all duration-300 ${hasError ? 'bg-red-50/50 ring-1 ring-red-100 animate-[shake_0.5s_ease-in-out]' : 'hover:bg-gray-50/50'}`}
                 >
-                  <label
-                    className={`text-sm font-medium ${hasError ? "text-red-500" : "text-gray-800"}`}
-                  >
-                    {index + 1}. {comp.label}{" "}
-                    {comp.required && <span className="text-red-500">*</span>}
+                  <label className={`text-[15px] font-semibold flex items-start gap-1 leading-snug ${hasError ? "text-red-600" : "text-gray-800"}`}>
+                    <span className="text-gray-400 font-normal mr-1">{index + 1}.</span>
+                    {comp.label}
+                    {comp.required && <span className="text-red-500 font-bold ml-1">*</span>}
                   </label>
 
-                  {/* 渲染 input，带错误边框 */}
-                  {comp.type === "input" && (
-                    <div className="relative">
-                      <input
-                        type="text"
-                        placeholder={comp.props.placeholder}
-                        value={formData[comp.id] || ""}
-                        onChange={(e) =>
-                          handleInputChange(comp.id, e.target.value)
-                        }
-                        className={`w-full border rounded-md px-3 py-2.5 text-sm outline-none transition-all ${
-                          hasError
-                            ? "border-red-400 bg-red-50 focus:ring-2 focus:ring-red-200 text-red-900"
-                            : "border-gray-300 focus:ring-2 focus:ring-brand focus:border-transparent"
-                        }`}
-                      />
-                      {hasError && (
-                        <AlertCircle className="w-4 h-4 text-red-500 absolute right-3 top-3" />
-                      )}
-                    </div>
-                  )}
-
-                  {/* Radio */}
-                  {comp.type === "radio" && (
-                    <div className="flex flex-col gap-3 mt-1">
-                      {comp.props.options?.map((opt, i) => (
-                        <label
-                          key={i}
-                          className="flex items-center gap-2 cursor-pointer group"
-                        >
-                          <input
-                            type="radio"
-                            name={`radio_${comp.id}`}
-                            value={opt.value}
-                            checked={formData[comp.id] === opt.value}
-                            onChange={(e) =>
-                              handleInputChange(comp.id, e.target.value)
-                            }
-                            className="w-4 h-4 text-brand border-gray-300 focus:ring-brand accent-brand"
-                          />
-                          <span className="text-sm text-gray-600">
-                            {opt.label}
-                          </span>
-                        </label>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Select */}
-                  {comp.type === "select" && (
-                    <select
-                      value={formData[comp.id] || ""}
-                      onChange={(e) =>
-                        handleInputChange(comp.id, e.target.value)
-                      }
-                      className={`w-full border rounded-md px-3 py-2.5 text-sm transition-all bg-white outline-none ${
-                        hasError
-                          ? "border-red-400 bg-red-50 focus:ring-2 focus:ring-red-200"
-                          : "border-gray-300 focus:ring-2 focus:ring-brand"
-                      }`}
-                    >
-                      <option value="" disabled>
-                        请选择...
-                      </option>
-                      {comp.props.options?.map((opt, i) => (
-                        <option key={i} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-
-                  {/* Textarea */}
-                  {comp.type === "textarea" && (
-                    <div className="relative">
-                      <textarea
-                        placeholder={comp.props.placeholder}
-                        value={formData[comp.id] || ""}
-                        onChange={(e) =>
-                          handleInputChange(comp.id, e.target.value)
-                        }
-                        className={`w-full border rounded-md px-3 py-2.5 text-sm outline-none transition-all resize-y min-h-[80px] ${
-                          hasError
-                            ? "border-red-400 bg-red-50 focus:ring-2 focus:ring-red-200"
-                            : "border-gray-300 focus:ring-2 focus:ring-brand"
-                        }`}
-                      />
-                    </div>
-                  )}
-
-                  {/* Checkbox (多选核心：更新数组) */}
-                  {comp.type === "checkbox" && (
-                    <div className="flex flex-col gap-3 mt-1">
-                      {comp.props.options?.map((opt, i) => {
-                        const currentArr = formData[comp.id] || [];
-                        const isChecked = currentArr.includes(opt.value);
-                        return (
-                          <label
-                            key={i}
-                            className="flex items-center gap-2 cursor-pointer group"
-                          >
-                            <input
-                              type="checkbox"
-                              value={opt.value}
-                              checked={isChecked}
-                              onChange={(e) => {
-                                const newArr = e.target.checked
-                                  ? [...currentArr, opt.value]
-                                  : currentArr.filter(
-                                      (v: string) => v !== opt.value,
-                                    );
-                                handleInputChange(comp.id, newArr);
-                              }}
-                              className="w-4 h-4 text-brand border-gray-300 rounded focus:ring-brand accent-brand"
-                            />
-                            <span className="text-sm text-gray-600 group-hover:text-gray-900 transition-colors">
-                              {opt.label}
-                            </span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {/* Date */}
-                  {comp.type === "date" && (
-                    <input
-                      type="date"
-                      value={formData[comp.id] || ""}
-                      onChange={(e) =>
-                        handleInputChange(comp.id, e.target.value)
-                      }
-                      className={`w-full border rounded-md px-3 py-2.5 text-sm outline-none transition-all ${
-                        hasError
-                          ? "border-red-400 bg-red-50"
-                          : "border-gray-300 focus:ring-2 focus:ring-brand"
-                      }`}
+                  <div className="mt-1">
+                    {/* === 调用独立的组件 === */}
+                    <FormControl
+                      schema={comp}
+                      value={formData[comp.id]}
+                      hasError={hasError}
+                      onChange={(val) => handleInputChange(comp.id, val)}
                     />
-                  )}
-                  {/* === 渲染红色的内联错误提示 === */}
-                  {hasError && (
-                    <p className="text-xs text-red-500 mt-0.5 animate-in slide-in-from-top-1">
-                      {errors[comp.id]}
-                    </p>
-                  )}
+                  </div>
+
+                  {hasError && <p className="text-xs font-medium text-red-500 mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors[comp.id]}</p>}
                 </div>
               );
             })}

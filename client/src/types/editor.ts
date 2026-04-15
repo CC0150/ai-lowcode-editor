@@ -1,4 +1,4 @@
-// 表单专用的组件类型
+// 表单专用的组件类型 (新增 upload, rate, switch, cascader)
 export type FormItemType =
   | "input"
   | "textarea"
@@ -6,51 +6,56 @@ export type FormItemType =
   | "select"
   | "button"
   | "date"
-  | "checkbox";
+  | "checkbox"
+  | "upload"
+  | "rate"
+  | "switch"
+  | "cascader";
 
-// 选项接口（用于单选、多选、下拉）
+// 选项接口（支持无限极嵌套，用于 Cascader）
 export interface OptionItem {
   label: string;
   value: string;
+  children?: OptionItem[]; // 用于级联选择器的子节点
 }
 
 // 联动规则接口
 export interface VisibleRule {
-  sourceId: string; // 依赖的题目 ID
-  operator: "==="; // 目前仅支持等于操作
-  value: string; // 期望的值
+  sourceId: string;
+  operator: "===";
+  value: string;
 }
 
 // 正则校验规则接口
 export interface ValidationRule {
-  regex: string; // 正则表达式字符串，如 "^1[3-9]\\d{9}$"
-  message: string; // 校验失败时的错误提示，如 "请输入正确的手机号"
+  regex: string;
+  message: string;
 }
 
 // 表单组件 Schema
 export interface ComponentSchema {
   id: string;
   type: FormItemType;
-  label: string; // 表单项的标题（如：“您的姓名”）
-  required: boolean; // 是否必填
+  label: string;
+  required: boolean;
   props: {
     placeholder?: string;
-    options?: OptionItem[]; // 给 radio 和 select 用的选项
-    buttonText?: string; // 按钮文字
+    options?: OptionItem[]; // 给 radio, select, checkbox, cascader 用的选项
+    buttonText?: string;
+    // === 新增高级组件特有 Props ===
+    maxRate?: number; // 评分组件的最大星数 (默认5)
+    accept?: string;  // 上传组件的文件类型限制 (如 image/*)
+    activeText?: string; // 开关打开时的文字
+    inactiveText?: string; // 开关关闭时的文字
   };
-  // 逻辑联动表达式
   visibleRule?: VisibleRule;
-  // 正则校验表达式
   validation?: ValidationRule;
 }
 
 export interface EditorStore {
-  // 历史栈
   past: ComponentSchema[][];
   future: ComponentSchema[][];
-  // 当前组件列表
   components: ComponentSchema[];
-  // 选中的组件 ID
   selectedId: string | null;
 
   addComponent: (type: FormItemType) => void;
@@ -60,10 +65,7 @@ export interface EditorStore {
   reorderComponents: (oldIndex: number, newIndex: number) => void;
   deleteComponent: (id: string) => void;
 
-  // 历史记录方法
   undo: () => void;
   redo: () => void;
-
-  // AI 生成组件
   applyAIGenerated: (newComponents: ComponentSchema[]) => void;
 }
