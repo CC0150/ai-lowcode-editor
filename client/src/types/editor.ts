@@ -1,4 +1,3 @@
-// 表单专用的组件类型 (新增 upload, rate, switch, cascader)
 export type FormItemType =
   | "input"
   | "textarea"
@@ -42,7 +41,7 @@ export interface ComponentSchema {
     placeholder?: string;
     options?: OptionItem[]; // 给 radio, select, checkbox, cascader 用的选项
     buttonText?: string;
-    // === 新增高级组件特有 Props ===
+    //  新增高级组件特有 Props  */
     maxRate?: number; // 评分组件的最大星数 (默认5)
     accept?: string;  // 上传组件的文件类型限制 (如 image/*)
     activeText?: string; // 开关打开时的文字

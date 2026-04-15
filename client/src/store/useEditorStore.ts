@@ -29,7 +29,7 @@ export const useEditorStore = create<EditorStore>((set, get) => {
       const isOptionsType =
         type === "radio" || type === "select" || type === "checkbox";
 
-      // === 1. 扩充：智能生成默认标题 (加入高级组件) ===
+      //  1. 扩充：智能生成默认标题 (加入高级组件)  */
       const labelMap: Record<FormItemType, string> = {
         input: "单行文本",
         textarea: "多行文本",
@@ -44,7 +44,7 @@ export const useEditorStore = create<EditorStore>((set, get) => {
         cascader: "级联选择",
       };
 
-      // === 2. 扩充：为不同的组件分配专属的默认 Props ===
+      //  2. 扩充：为不同的组件分配专属的默认 Props  */
       const defaultProps: any = {};
 
       if (type === "input" || type === "textarea" || type === "date") {

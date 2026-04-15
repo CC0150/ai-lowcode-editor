@@ -4,9 +4,9 @@ import { Box, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Un
 import { ExportModal } from "./components/ExportModal";
 import { FormPreview } from "./components/FormPreview";
 import { AIGenerator } from "./components/AIGenerator";
-import { LeftSidebar } from "./components/LeftSideBar";
+import { LeftSidebar } from "./components/LeftSidebar";
 import { EditorCanvas } from "./components/EditorCanvas";
-import { RightSidebar } from "./components/RightSideBar";
+import { RightSidebar } from "./components/RightSidebar";
 
 export default function App() {
   const { past, future, undo, redo } = useEditorStore();
@@ -36,7 +36,7 @@ export default function App() {
   return (
     <div className="h-screen w-full flex flex-col bg-gray-50 overflow-hidden font-sans text-slate-800">
       
-      {/* ---------- 顶部导航 ---------- */}
+      {/*  顶部导航  */}
       <header className="shrink-0 h-14 border-b border-gray-200 bg-white/90 backdrop-blur-md flex items-center px-4 justify-between z-20 shadow-sm relative">
         
         {/* 1. 左侧：Logo 和侧边栏开关 */}
@@ -75,13 +75,12 @@ export default function App() {
         </div>
       </header>
 
-      {/* ---------- 主体区域 ---------- */}
+      {/*  主体区域  */}
       <main className="flex-1 flex overflow-hidden relative">
         {/* 全局模态框 */}
         {isPreview && <FormPreview onBack={() => setIsPreview(false)} />}
         {isExporting && <ExportModal onClose={() => setIsExporting(false)} />}
 
-        {/* 左、中、右三大组件组装 */}
         <LeftSidebar isOpen={leftOpen} />
         <EditorCanvas />
         <RightSidebar isOpen={rightOpen} />

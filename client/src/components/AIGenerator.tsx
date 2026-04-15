@@ -3,7 +3,8 @@ import { createPortal } from "react-dom";
 import { useEditorStore } from "../store/useEditorStore";
 import { type ComponentSchema } from "../types/editor";
 import { FormPreview } from "./FormPreview";
-import { Sparkles, Command, Loader2, CornerDownLeft, X } from "lucide-react";
+import { Sparkles, Command, CornerDownLeft, X } from "lucide-react";
+import { message } from "antd";
 
 export function AIGenerator() {
   const [isOpen, setIsOpen] = useState(false);
@@ -52,11 +53,11 @@ export function AIGenerator() {
       if (result.success && Array.isArray(result.data)) {
         setPreviewData(result.data);
       } else {
-        alert("AI 生成失败：" + result.error);
+        message.error("AI 生成失败：" + result.error);
       }
     } catch (error) {
       console.error("请求异常:", error);
-      alert("请求后端接口失败，请确认服务是否启动");
+      message.error("请求后端接口失败，请确认服务是否启动");
     } finally {
       setLoading(false);
     }
@@ -81,11 +82,7 @@ export function AIGenerator() {
         onClick={(e) => e.stopPropagation()} 
       >
         <div className="flex items-center px-6 py-5">
-          {loading ? (
-            <Loader2 className="w-7 h-7 text-indigo-500 animate-spin mr-4" />
-          ) : (
-            <Sparkles className="w-7 h-7 text-indigo-600 mr-4 drop-shadow-sm" />
-          )}
+          <Sparkles className="w-7 h-7 text-indigo-600 mr-4 drop-shadow-sm" />
           <textarea
             ref={inputRef}
             className="flex-1 bg-transparent text-xl text-slate-800 placeholder-slate-300 outline-none resize-none font-medium leading-relaxed"
@@ -117,7 +114,7 @@ export function AIGenerator() {
                      <div className="w-12 h-12 border-4 border-indigo-100 rounded-full animate-spin border-t-indigo-500"></div>
                      <Sparkles className="w-5 h-5 text-indigo-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
                   </div>
-                  <p className="text-sm font-medium animate-pulse">正在利用大模型编排组件...</p>
+                  <p className="text-sm font-medium animate-pulse">正在编排组件...</p>
                 </div>
               ) : (
                 previewData && (
@@ -172,7 +169,6 @@ export function AIGenerator() {
         </div>
       </button>
 
-      {/* 使用 createPortal 将弹窗挂载到 HTML body 的最外层 */}
       {createPortal(modalContent, document.body)}
     </>
   );

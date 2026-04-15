@@ -27,7 +27,7 @@ export const SetterPanel = () => {
 
   return (
     <div className="h-full flex flex-col bg-slate-50">
-      {/* ---------- 顶部固定 Header ---------- */}
+      {/*  顶部固定 Header  */}
       <header className="shrink-0 px-5 py-4 border-b border-slate-200 bg-white z-10 flex items-center justify-between shadow-sm">
         <div className="flex flex-col">
           <h3 className="font-bold text-slate-800">属性面板</h3>
@@ -47,10 +47,10 @@ export const SetterPanel = () => {
         </div>
       </header>
 
-      {/* ---------- 可滚动配置区域 ---------- */}
+      {/*  可滚动配置区域  */}
       <div className="flex-1 overflow-y-auto custom-scrollbar pb-10">
 
-        {/* ================= 1. 基础属性 ================= */}
+        {/*  1. 基础属性  */}
         {selectedComponent.type !== 'button' && (
           <PanelSection title="基础属性" icon={Settings2}>
             <div className="flex flex-col gap-1.5">
@@ -73,7 +73,7 @@ export const SetterPanel = () => {
           </PanelSection>
         )}
 
-        {/* ================= 2. 控件高级属性 ================= */}
+        {/*  2. 控件高级属性  */}
         <PanelSection title="控件高级属性" icon={Sliders}>
 
           {selectedComponent.type === 'button' && (
@@ -117,7 +117,7 @@ export const SetterPanel = () => {
             </div>
           )}
 
-          {/* === 引入独立的选项编辑器组件 === */}
+          {/*  引入独立的选项编辑器组件  */}
           {(selectedComponent.type === 'radio' || selectedComponent.type === 'select' || selectedComponent.type === 'checkbox') && (
             <OptionsEditor
               options={selectedComponent.props.options || []}
@@ -147,7 +147,7 @@ export const SetterPanel = () => {
           )}
         </PanelSection>
 
-        {/* ================= 3. 数据校验 ================= */}
+        {/*  3. 数据校验  */}
         {(selectedComponent.type === 'input' || selectedComponent.type === 'textarea') && (
           <PanelSection title="数据校验" icon={ShieldCheck} defaultOpen={false}>
             <div className="flex flex-col gap-1.5">
@@ -164,7 +164,7 @@ export const SetterPanel = () => {
           </PanelSection>
         )}
 
-        {/* ================= 4. 动态逻辑 ================= */}
+        {/*  4. 动态逻辑  */}
         {selectedComponent.type !== 'button' && (
           <PanelSection title="动态显示逻辑" icon={GitBranch} defaultOpen={false}>
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col gap-4">

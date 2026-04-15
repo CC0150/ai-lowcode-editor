@@ -7,7 +7,7 @@ import { FormControl } from "./FormControl"; // 引入刚才封装好的组件
 interface Props {
   onBack?: () => void;
   overrideComponents?: ComponentSchema[];
-  isEmbedded?: boolean;
+  isEmbedded?: boolean; // 是否嵌入模式
 }
 
 export const FormPreview: React.FC<Props> = ({ onBack, overrideComponents, isEmbedded = false }) => {
@@ -32,7 +32,7 @@ export const FormPreview: React.FC<Props> = ({ onBack, overrideComponents, isEmb
     return formData[comp.visibleRule.sourceId] === comp.visibleRule.value;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SubmitEvent) => {
     e.preventDefault();
     const newErrors: Record<string, string> = {};
     let firstErrorId: string | null = null;
@@ -135,7 +135,6 @@ export const FormPreview: React.FC<Props> = ({ onBack, overrideComponents, isEmb
                   </label>
 
                   <div className="mt-1">
-                    {/* === 调用独立的组件 === */}
                     <FormControl
                       schema={comp}
                       value={formData[comp.id]}
