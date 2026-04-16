@@ -16,6 +16,7 @@ import { LeftSidebar } from "./components/LeftSidebar";
 import { EditorCanvas } from "./components/EditorCanvas";
 import { RightSidebar } from "./components/RightSidebar";
 import { useUIStore } from "./store/useUIStore";
+import { Logo } from "./components/Logo";
 
 export default function App() {
   const { past, future, undo, redo } = useEditorStore();
@@ -62,10 +63,10 @@ export default function App() {
             )}
           </button>
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded bg-brand flex items-center justify-center shadow-sm">
-              <Box className="w-4 h-4 text-white" />
-            </div>
-            <h1 className="font-bold text-lg text-gray-800">表单引擎 Pro</h1>
+            <Logo className="w-9 h-9" />
+            <h1 className="font-bold text-lg text-gray-800 tracking-tight">
+              AI Form <span className="text-indigo-600">Pro</span>
+            </h1>
           </div>
         </div>
 
