@@ -15,9 +15,12 @@ export type FormItemType =
 
 // 选项接口（支持无限极嵌套，用于 Cascader）
 export interface OptionItem {
+  /** 选项标签 */
   label: string;
+  /** 选项值 */
   value: string;
-  children?: OptionItem[]; // 用于级联选择器的子节点
+  /** 子选项 */
+   children?: OptionItem[]; // 用于级联选择器的子节点
 }
 
 // 联动规则接口

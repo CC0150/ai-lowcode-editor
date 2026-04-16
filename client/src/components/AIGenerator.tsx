@@ -6,12 +6,12 @@ import { FormPreview } from "./FormPreview";
 import { Sparkles, Command, CornerDownLeft, X } from "lucide-react";
 import { message } from "antd";
 
-// 新增：残缺 JSON 修复器。尝试强行闭合未传输完的 JSON 结构，提取出已成型的组件数组
+// 残缺 JSON 修复器。尝试强行闭合未传输完的 JSON 结构，提取出已成型的组件数组
 const parsePartialJSON = (jsonString: string) => {
   try {
     return JSON.parse(jsonString).components;
   } catch (e) {
-    // 粗暴但有效的容错：穷举常见的截断闭合情况
+    // 穷举常见的截断闭合情况
     const closures = ["", "}", "]}", "}]}", "\"]}", '"}', '"]}', '}}]}'];
     let fixedText = jsonString.replace(/,\s*$/, ""); // 移除末尾多余的逗号
     

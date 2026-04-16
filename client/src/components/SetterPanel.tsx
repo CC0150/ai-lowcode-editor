@@ -208,7 +208,6 @@ export const SetterPanel = () => {
         {/* 1. 基础属性  */}
         {selectedComponent.type !== "button" && (
           <PanelSection title="基础属性" icon={Settings2}>
-            {/* ... 基础属性原有逻辑保持不变 ... */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-slate-600">
                 字段标题 (Label)
@@ -254,7 +253,6 @@ export const SetterPanel = () => {
 
         {/* 2. 控件高级属性  */}
         <PanelSection title="控件高级属性" icon={Sliders}>
-          {/* ... 高级属性所有组件原有逻辑保持不变 ... */}
           {selectedComponent.type === "button" && (
             <div className="flex flex-col gap-2 p-3 bg-brand/5 rounded-lg border border-brand/20">
               <label className="text-xs font-bold text-brand flex items-center gap-1">
@@ -396,25 +394,26 @@ export const SetterPanel = () => {
         {(selectedComponent.type === "input" ||
           selectedComponent.type === "textarea") && (
           <PanelSection title="数据校验" icon={ShieldCheck} defaultOpen={true}>
-            {/* AI 智能正则入口 */}
-            <div className="mb-4 bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-100 rounded-xl p-3">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-purple-900 flex items-center gap-1">
-                  <Wand2 className="w-3.5 h-3.5 text-purple-600" /> 智能生成正则
+            {/* AI 智能正则入口优化版 */}
+            <div className="mb-4 flex flex-col bg-indigo-50/40 border border-indigo-100/80 rounded-xl overflow-hidden transition-all">
+              <div 
+                className="flex items-center justify-between p-3 cursor-pointer hover:bg-indigo-50/60 transition-colors"
+                onClick={() => setIsRegexAIOpen(!isRegexAIOpen)}
+              >
+                <span className="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
+                  <Wand2 className="w-3.5 h-3.5 text-indigo-500" /> AI 智能正则助手
                 </span>
-                <button
-                  onClick={() => setIsRegexAIOpen(!isRegexAIOpen)}
-                  className="text-[10px] bg-white px-2 py-1 rounded shadow-sm text-purple-600 font-medium hover:bg-purple-100 transition-colors"
-                >
+                <span className="text-[10px] text-indigo-400 font-medium bg-white px-2 py-0.5 rounded-full border border-indigo-100 shadow-sm">
                   {isRegexAIOpen ? "收起" : "试试看"}
-                </button>
+                </span>
               </div>
+              
               {isRegexAIOpen && (
-                <div className="flex flex-col gap-2 mt-2 animate-in fade-in duration-200">
+                <div className="flex flex-col gap-2 px-3 pb-3 pt-1 border-t border-indigo-100/50 animate-in slide-in-from-top-1 fade-in duration-200">
                   <input
                     type="text"
-                    placeholder="输入规则，如：大陆手机号、邮箱..."
-                    className="w-full text-xs px-2 py-1.5 border border-purple-200 rounded outline-none focus:ring-1 focus:ring-purple-500"
+                    placeholder="例如：大陆手机号、邮箱、必须包含数字..."
+                    className={`${inputBaseStyle} !text-xs !py-1.5 focus:!border-indigo-300 focus:!ring-indigo-500/20`}
                     value={regexPrompt}
                     onChange={(e) => setRegexPrompt(e.target.value)}
                     onKeyDown={(e) =>
@@ -424,12 +423,14 @@ export const SetterPanel = () => {
                   <button
                     onClick={handleGenerateRegex}
                     disabled={isRegexLoading || !regexPrompt.trim()}
-                    className="w-full bg-purple-600 text-white text-xs py-1.5 rounded font-medium hover:bg-purple-700 disabled:opacity-50 flex items-center justify-center gap-1"
+                    className="w-full bg-white border border-indigo-200 text-indigo-600 text-xs py-1.5 rounded-lg font-semibold hover:bg-indigo-50 hover:border-indigo-300 disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:text-slate-400 flex items-center justify-center gap-1.5 shadow-sm transition-all"
                   >
                     {isRegexLoading ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
                     ) : (
-                      "生成并填充"
+                      <>
+                        <Sparkles className="w-3 h-3" /> 生成并应用
+                      </>
                     )}
                   </button>
                 </div>
@@ -498,6 +499,7 @@ export const SetterPanel = () => {
                   className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 shadow-sm focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none cursor-pointer"
                   value={selectedComponent.visibleRule?.sourceId || ""}
                   onChange={(e) =>
+                    // 修复visibleRule更新逻辑，确保operator字段被正确设置
                     updateComponent(selectedComponent.id, {
                       visibleRule: e.target.value
                         ? {
@@ -529,6 +531,7 @@ export const SetterPanel = () => {
                     className="w-full px-3 py-2 bg-white border border-brand/30 rounded-lg text-sm text-slate-800 shadow-sm font-mono focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none"
                     value={selectedComponent.visibleRule?.value || ""}
                     onChange={(e) =>
+                      // 修复visibleRule更新逻辑，确保operator字段被正确设置
                       updateComponent(selectedComponent.id, {
                         visibleRule: {
                           ...selectedComponent.visibleRule!,

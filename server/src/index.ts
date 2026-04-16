@@ -57,7 +57,7 @@ interface ComponentSchema {
 例如：{ "components": [ { "id": "name", "type": "input", "label": "姓名", "required": true, "props": { "placeholder": "请输入姓名" } } ] }
 不要输出任何解释性文字或 Markdown 标记。
 `;
-// 1. 局部组件 AI 修改接口
+// 局部组件 AI 修改接口
 app.post("/api/modify-component", async (req, res) => {
   const { component, prompt } = req.body;
   if (!component || !prompt) return res.status(400).json({ error: "参数缺失" });
@@ -87,7 +87,7 @@ ${JSON.stringify(component)}
   }
 });
 
-// 2. AI 智能正则校验接口
+// AI 智能正则校验接口
 app.post("/api/generate-regex", async (req, res) => {
   const { prompt } = req.body;
   if (!prompt) return res.status(400).json({ error: "参数缺失" });
@@ -115,6 +115,7 @@ app.post("/api/generate-regex", async (req, res) => {
   }
 });
 
+// AI 表单生成接口
 app.post("/api/generate-form", async (req, res) => {
   const { prompt } = req.body;
 

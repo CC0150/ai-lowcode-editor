@@ -60,9 +60,9 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({ isOpen }) => {
               { type: "switch", icon: ToggleLeft, label: "开关" },
               { type: "cascader", icon: ListTree, label: "级联选择" },
             ].map((item) => (
-              <button key={item.type} onClick={() => addComponent(item.type as any)} className="flex flex-col items-center justify-center p-3 border border-indigo-100 rounded-lg hover:border-indigo-500 hover:text-indigo-600 bg-indigo-50/30 hover:bg-indigo-50 transition-all group shadow-sm">
-                <item.icon className="w-5 h-5 mb-2 text-indigo-400 group-hover:text-indigo-600" />
-                <span className="text-xs font-medium text-slate-600 group-hover:text-indigo-600">{item.label}</span>
+              <button key={item.type} onClick={() => addComponent(item.type as any)} className="flex flex-col items-center justify-center p-3 border border-gray-200 rounded-lg hover:border-brand hover:text-brand bg-gray-50/30 hover:bg-white transition-all group shadow-sm">
+                <item.icon className="w-5 h-5 mb-2 text-gray-500 group-hover:text-brand" />
+                <span className="text-xs font-medium text-gray-600 group-hover:text-brand">{item.label}</span>
               </button>
             ))}
           </div>
