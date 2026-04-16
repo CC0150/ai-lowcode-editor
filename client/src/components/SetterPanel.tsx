@@ -207,7 +207,7 @@ export const SetterPanel = () => {
       <div className="flex-1 overflow-y-auto custom-scrollbar pb-10">
         {/* 1. 基础属性  */}
         {selectedComponent.type !== "button" && (
-          <PanelSection title="基础属性" icon={Settings2}>
+          <PanelSection id="basic-props" title="基础属性" icon={Settings2}>
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-slate-600">
                 字段标题 (Label)
@@ -252,7 +252,7 @@ export const SetterPanel = () => {
         )}
 
         {/* 2. 控件高级属性  */}
-        <PanelSection title="控件高级属性" icon={Sliders}>
+        <PanelSection id="advanced-props" title="控件高级属性" icon={Sliders}>
           {selectedComponent.type === "button" && (
             <div className="flex flex-col gap-2 p-3 bg-brand/5 rounded-lg border border-brand/20">
               <label className="text-xs font-bold text-brand flex items-center gap-1">
@@ -390,11 +390,10 @@ export const SetterPanel = () => {
           )}
         </PanelSection>
 
-        {/* 3. 数据校验 (带 AI 正则生成)  */}
+          {/* 3. 数据校验 (带 AI 正则生成)  */}
         {(selectedComponent.type === "input" ||
           selectedComponent.type === "textarea") && (
-          <PanelSection title="数据校验" icon={ShieldCheck} defaultOpen={true}>
-            {/* AI 智能正则入口优化版 */}
+          <PanelSection id="validation-props" title="数据校验" icon={ShieldCheck} defaultOpen={true}>
             <div className="mb-4 flex flex-col bg-indigo-50/40 border border-indigo-100/80 rounded-xl overflow-hidden transition-all">
               <div 
                 className="flex items-center justify-between p-3 cursor-pointer hover:bg-indigo-50/60 transition-colors"
@@ -485,11 +484,11 @@ export const SetterPanel = () => {
         {/* 4. 动态逻辑  */}
         {selectedComponent.type !== "button" && (
           <PanelSection
+            id="logic-props"
             title="动态显示逻辑"
             icon={GitBranch}
             defaultOpen={false}
           >
-            {/* ... 动态逻辑保持不变 ... */}
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
                 <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
