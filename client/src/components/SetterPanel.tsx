@@ -186,7 +186,7 @@ export const SetterPanel = () => {
             className={`p-1.5 rounded-md transition-all shadow-sm border text-xs flex items-center gap-1 font-medium ${isCopilotOpen ? "bg-indigo-50 border-indigo-200 text-indigo-600" : "text-indigo-500 border-indigo-100 hover:bg-indigo-50 bg-white"}`}
             title="局部 AI 助手 (Ctrl+I)"
           >
-            <Sparkles className="w-4 h-4" /> Copilot
+            <Sparkles className="w-4 h-4" /> AI 助手
           </button>
           <span className="px-2 py-1 bg-indigo-50 text-indigo-600 text-[11px] font-mono font-bold rounded-md border border-indigo-200 ml-1">
             {selectedComponent.type}
@@ -544,7 +544,7 @@ export const SetterPanel = () => {
 
               {selectedComponent.visibleRule?.sourceId && (
                 <div className="flex flex-col gap-1.5 pt-2 border-t border-slate-200 border-dashed">
-                  <label className="text-[11px] font-bold text-brand uppercase tracking-wider">
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                     当触发值等于 (Value)
                   </label>
                   <input
