@@ -18,6 +18,7 @@ import {
 import { PanelSection } from "./PanelSection";
 import { OptionsEditor } from "./OptionsEditor";
 import { message, Select } from "antd";
+import { CascaderEditor } from "./CascaderEditor";
 
 export const SetterPanel = () => {
   const {
@@ -39,6 +40,36 @@ export const SetterPanel = () => {
   const [isRegexAIOpen, setIsRegexAIOpen] = useState(false);
   const [regexPrompt, setRegexPrompt] = useState("");
   const [isRegexLoading, setIsRegexLoading] = useState(false);
+
+  // --- AI 选项生成状态 ---
+  const [isOptionsAILoading, setIsOptionsAILoading] = useState(false);
+
+  // --- AI 选项生成处理函数 ---
+  const handleGenerateOptions = async (prompt: string) => {
+    if (!selectedComponent) return;
+    setIsOptionsAILoading(true);
+    try {
+      const res = await fetch("http://localhost:3001/api/modify-component", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          component: selectedComponent,
+          prompt: `帮我批量生成选项，主题是："${prompt}"。请直接重写 props.options 数组，每个选项包含 label 和 value (value尽量使用英文或拼音缩写)。`,
+        }),
+      });
+      const result = await res.json();
+      if (result.success && result.data?.props?.options) {
+        updateProps(selectedComponent.id, { options: result.data.props.options });
+        message.success("AI 选项生成成功");
+      } else {
+        message.error("生成失败，请尝试换个描述");
+      }
+    } catch (e) {
+      message.error("请求失败，请检查服务");
+    } finally {
+      setIsOptionsAILoading(false);
+    }
+  };
 
   // 快捷键监听：选中组件时，按 Ctrl+I 唤醒局部 AI
   useEffect(() => {
@@ -364,31 +395,19 @@ export const SetterPanel = () => {
                 onChange={(newOpts) =>
                   updateProps(selectedComponent.id, { options: newOpts })
                 }
+                onAIGenerate={handleGenerateOptions}
+                isAILoading={isOptionsAILoading}
               />
             )}
           {selectedComponent.type === "cascader" && (
-            <div className="flex flex-col gap-2">
-              <label className="text-xs font-bold text-slate-700">
-                树形数据结构 (JSON)
-              </label>
-              <textarea
-                className="w-full h-56 px-4 py-3 bg-slate-900 text-green-400 font-mono text-[12px] leading-relaxed rounded-xl focus:ring-2 focus:ring-brand outline-none shadow-inner custom-scrollbar"
-                defaultValue={JSON.stringify(
-                  selectedComponent.props.options || [],
-                  null,
-                  2,
-                )}
-                onBlur={(e) => {
-                  try {
-                    updateProps(selectedComponent.id, {
-                      options: JSON.parse(e.target.value),
-                    });
-                  } catch (err) {
-                    alert("JSON 格式错误！");
-                  }
-                }}
-              />
-            </div>
+            <CascaderEditor
+              options={selectedComponent.props.options || []}
+              onChange={(newOpts) =>
+                updateProps(selectedComponent.id, { options: newOpts })
+              }
+              onAIGenerate={handleGenerateOptions}
+              isAILoading={isOptionsAILoading}
+            />
           )}
         </PanelSection>
 
