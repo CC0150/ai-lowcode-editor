@@ -33,7 +33,7 @@ export const SortableWrapper: React.FC<Props> = ({ id, isSelected, onClick, chil
       }`}
     >
       {isSelected && (
-        <div className="absolute left-0 top-0 bottom-0 w-1 bg-brand rounded-l-lg" />
+        <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-600 rounded-l-lg" />
       )}
       {children}
     </div>

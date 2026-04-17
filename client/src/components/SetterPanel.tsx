@@ -74,7 +74,7 @@ export const SetterPanel = () => {
       if (result.success && result.data) {
         // 全量覆盖当前组件（保留原 ID 即可）
         updateComponent(selectedComponent.id, result.data);
-        message.success("AI 修改成功 ✨");
+        message.success("AI 修改成功");
         setCopilotPrompt("");
         setIsCopilotOpen(false);
       } else {
@@ -87,7 +87,9 @@ export const SetterPanel = () => {
     }
   };
 
-  // 正则生成请求逻辑
+  /**
+   * 触发正则生成
+   */
   const handleGenerateRegex = async () => {
     if (!regexPrompt.trim() || !selectedComponent) return;
     setIsRegexLoading(true);
@@ -155,7 +157,7 @@ export const SetterPanel = () => {
           >
             <Sparkles className="w-4 h-4" /> Copilot
           </button>
-          <span className="px-2 py-1 bg-brand/10 text-brand text-[11px] font-mono font-bold rounded-md border border-brand/20 ml-1">
+          <span className="px-2 py-1 bg-indigo-50 text-indigo-600 text-[11px] font-mono font-bold rounded-md border border-indigo-200 ml-1">
             {selectedComponent.type}
           </span>
           <button
@@ -254,8 +256,8 @@ export const SetterPanel = () => {
         {/* 2. 控件高级属性  */}
         <PanelSection id="advanced-props" title="控件高级属性" icon={Sliders}>
           {selectedComponent.type === "button" && (
-            <div className="flex flex-col gap-2 p-3 bg-brand/5 rounded-lg border border-brand/20">
-              <label className="text-xs font-bold text-brand flex items-center gap-1">
+            <div className="flex flex-col gap-2 p-3 bg-indigo-50/50 rounded-lg border border-indigo-100">
+              <label className="text-xs font-bold text-indigo-900 flex items-center gap-1">
                 <MousePointer2 className="w-3 h-3" /> 按钮文字 (Text)
               </label>
               <input

@@ -2,7 +2,8 @@ import React, { useState, useRef } from "react";
 import { useEditorStore } from "../store/useEditorStore";
 import { ArrowLeft, CheckCircle2, AlertCircle } from "lucide-react";
 import { type ComponentSchema } from "../types/editor";
-import { FormControl } from "./FormControl"; // 引入刚才封装好的组件
+import { FormControl } from "./FormControl";
+import { ErrorBoundary } from "react-error-boundary";
 
 interface Props {
   onBack?: () => void;
@@ -27,7 +28,11 @@ export const FormPreview: React.FC<Props> = ({
   const handleInputChange = (id: string, value: any) => {
     setFormData((prev) => ({ ...prev, [id]: value }));
     if (errors[id]) {
-      setErrors((prev) => ({ ...prev, [id]: undefined }) as any);
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[id];
+        return newErrors;
+      });
     }
   };
 
@@ -36,15 +41,18 @@ export const FormPreview: React.FC<Props> = ({
     return formData[comp.visibleRule.sourceId] === comp.visibleRule.value;
   };
 
-  const handleSubmit = (e: React.SubmitEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const newErrors: Record<string, string> = {};
     let firstErrorId: string | null = null;
 
-    components.forEach((comp) => {
+    components.forEach((comp, index) => {
       if (!checkIsVisible(comp)) return;
 
-      const val = formData[comp.id];
+      // 使用 safeKey 保持与渲染时的 ID 读取一致
+      const safeId = comp.id || `streaming-comp-${index}`;
+      const val = formData[safeId];
+
       const isEmpty =
         val === undefined ||
         val === null ||
@@ -57,8 +65,8 @@ export const FormPreview: React.FC<Props> = ({
         comp.type !== "switch" &&
         isEmpty
       ) {
-        newErrors[comp.id] = "此项为必填项";
-        if (!firstErrorId) firstErrorId = comp.id;
+        newErrors[safeId] = "此项为必填项";
+        if (!firstErrorId) firstErrorId = safeId;
       } else if (
         !isEmpty &&
         typeof val === "string" &&
@@ -66,10 +74,10 @@ export const FormPreview: React.FC<Props> = ({
       ) {
         try {
           if (!new RegExp(comp.validation.regex).test(val)) {
-            newErrors[comp.id] = comp.validation.message || "格式不正确";
-            if (!firstErrorId) firstErrorId = comp.id;
+            newErrors[safeId] = comp.validation.message || "格式不正确";
+            if (!firstErrorId) firstErrorId = safeId;
           }
-        } catch (err) {}
+        } catch (err) { }
       }
     });
 
@@ -149,10 +157,10 @@ export const FormPreview: React.FC<Props> = ({
           {!isEmbedded && (
             <div className="border-b-2 border-gray-100 pb-5 mb-8">
               <h1 className="text-3xl font-extrabold text-center text-gray-800 tracking-tight">
-                表单预览模式
+                表单预览
               </h1>
               <p className="text-center text-gray-400 text-sm mt-2">
-                真实校验环境，尝试触发错误或完成提交
+                真实校验环境
               </p>
             </div>
           )}
@@ -178,7 +186,7 @@ export const FormPreview: React.FC<Props> = ({
                   >
                     <button
                       type="submit"
-                      className="w-full bg-brand text-white py-3.5 rounded-xl font-bold text-[15px] shadow-lg shadow-brand/20 hover:bg-brand/90 hover:shadow-brand/30 transition-all active:scale-[0.99]"
+                      className="w-full bg-indigo-600 text-white py-3.5 rounded-xl font-bold text-[16px] shadow-lg shadow-indigo-600/30 hover:bg-indigo-600/90 hover:shadow-indigo-600/30 transition-all active:scale-[0.99]"
                     >
                       {comp.props?.buttonText || "提交表单"}
                     </button>
@@ -186,17 +194,15 @@ export const FormPreview: React.FC<Props> = ({
                 );
               }
 
-              const hasError = !!errors[comp.id];
+              const hasError = !!errors[safeKey];
 
               return (
                 <div
                   key={safeKey}
                   ref={(el) => {
-                    if (comp.id) {
-                      fieldRefs.current[comp.id] = el;
-                    }
+                    fieldRefs.current[safeKey] = el;
                   }}
-                  className={`flex flex-col gap-2 p-4 -mx-4 rounded-xl transition-all duration-300 ... `}
+                  className={`flex flex-col gap-2 p-4 -mx-4 rounded-xl transition-all duration-300`}
                 >
                   <label
                     className={`text-[15px] font-semibold flex items-start gap-1 leading-snug ${hasError ? "text-red-600" : "text-gray-800"}`}
@@ -211,18 +217,27 @@ export const FormPreview: React.FC<Props> = ({
                   </label>
 
                   <div className="mt-1">
-                    <FormControl
-                      schema={comp}
-                      value={formData[comp.id]}
-                      hasError={hasError}
-                      onChange={(val) => handleInputChange(comp.id, val)}
-                    />
+                    <ErrorBoundary
+                      fallback={
+                        <div className="p-4 border border-red-200 bg-red-50 text-red-500 rounded-lg text-sm font-medium flex flex-col items-center justify-center">
+                          <AlertCircle className="w-5 h-5 mb-1" />
+                          <span>AI 生成的组件属性存在异常，无法渲染</span>
+                        </div>
+                      }
+                    >
+                      <FormControl
+                        schema={comp}
+                        value={formData[safeKey]}
+                        hasError={hasError}
+                        onChange={(val) => handleInputChange(safeKey, val)}
+                      />
+                    </ErrorBoundary>
                   </div>
 
                   {hasError && (
                     <p className="text-xs font-medium text-red-500 mt-1 flex items-center gap-1">
                       <AlertCircle className="w-3 h-3" />
-                      {errors[comp.id]}
+                      {errors[safeKey]}
                     </p>
                   )}
                 </div>

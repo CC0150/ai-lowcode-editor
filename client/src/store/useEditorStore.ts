@@ -112,6 +112,11 @@ export const useEditorStore = create<EditorStore>()(
           });
         },
 
+        /**
+         * 重新排序组件
+         * @param oldIndex - 组件当前的索引位置
+         * @param newIndex - 组件要移动到的新索引位置
+         */
         reorderComponents: (oldIndex, newIndex) => {
           applyChange((draft) => {
             // 使用 splice 模拟 arrayMove，immer 会将其转化为极其精简的 Patch
@@ -157,7 +162,11 @@ export const useEditorStore = create<EditorStore>()(
             };
           }),
 
-        applyAIGenerated: (newComponents) => {
+        /**
+         * 应用 AI 生成的组件
+         * @param newComponents - 从 AI 生成器获取的新组件数组
+         */
+        applyAIGenerated: (newComponents: ComponentSchema[]) => {
           applyChange((draft) => {
             // 清空当前数组并推入 AI 生成的新组件
             draft.splice(0, draft.length, ...newComponents);

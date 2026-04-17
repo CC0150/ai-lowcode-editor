@@ -1,32 +1,30 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useEditorStore } from "../store/useEditorStore";
 import { type ComponentSchema } from "../types/editor";
 import { FormPreview } from "./FormPreview";
 import { Sparkles, Command, CornerDownLeft, X } from "lucide-react";
 import { message } from "antd";
+import { jsonrepair } from "jsonrepair";
+import { validateAndCleanComponents } from "../utils/validation";
 
-// 残缺 JSON 修复器。尝试强行闭合未传输完的 JSON 结构，提取出已成型的组件数组
+/**
+ * 解析 JSON 字符串，尝试修复并返回组件数组
+ */
 const parsePartialJSON = (jsonString: string) => {
   try {
-    return JSON.parse(jsonString).components;
+    const repaired = jsonrepair(jsonString);
+    const parsed = JSON.parse(repaired);
+    return parsed.components;
   } catch (e) {
-    // 穷举常见的截断闭合情况
-    const closures = ["", "}", "]}", "}]}", "\"]}", '"}', '"]}', '}}]}'];
-    let fixedText = jsonString.replace(/,\s*$/, ""); // 移除末尾多余的逗号
-    
-    for (const closure of closures) {
-      try {
-        const parsed = JSON.parse(fixedText + closure);
-        if (parsed && Array.isArray(parsed.components)) {
-          return parsed.components;
-        }
-      } catch (err) {}
-    }
-    return null; // 如果全都解析失败，说明数据还太少，返回 null 继续等待
+    // 如果 jsonrepair 都修不好，说明数据实在太少了（比如只有半个大括号），耐心等待下一帧
+    return null;
   }
 };
 
+/**
+ * AI 生成器组件
+ */
 export function AIGenerator() {
   const [isOpen, setIsOpen] = useState(false);
   const [prompt, setPrompt] = useState("");
@@ -35,8 +33,22 @@ export function AIGenerator() {
 
   const applyAIGenerated = useEditorStore((state) => state.applyAIGenerated);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-  // 1. 监听全局快捷键 Ctrl+K / Cmd+K
+  /**
+   * 关闭弹窗
+   */
+  const handleCloseModal = useCallback(() => {
+    setIsOpen(false);
+    setPrompt("");
+    setPreviewData(null);
+    setLoading(false);
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+  }, []);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
@@ -44,25 +56,28 @@ export function AIGenerator() {
         setIsOpen(true);
       }
       if (e.key === "Escape") {
-        setIsOpen(false);
+        handleCloseModal();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [handleCloseModal]);
 
-  // 2. 弹窗打开时自动聚焦输入框
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [isOpen]);
 
+  /**
+   * 触发 AI 生成
+   */
   const handleGenerate = async () => {
     if (!prompt.trim() || loading) return;
     setLoading(true);
-    setPreviewData([]); // 注意这里：将 null 改为 []，为了让 UI 尽早开始渲染
-    
+    setPreviewData([]);
+
+    abortControllerRef.current = new AbortController();
     let accumulatedText = "";
 
     try {
@@ -70,6 +85,7 @@ export function AIGenerator() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt }),
+        signal: abortControllerRef.current.signal,
       });
 
       if (!response.body) throw new Error("无响应流");
@@ -81,15 +97,14 @@ export function AIGenerator() {
         const { done, value } = await reader.read();
         if (done) break;
 
-        // 解码当前的 Buffer 块
         const chunk = decoder.decode(value, { stream: true });
         const lines = chunk.split("\n");
 
         for (const line of lines) {
           if (line.startsWith("data: ")) {
             const dataStr = line.slice(6);
-            if (dataStr === "[DONE]") break; // 传输完毕
-            
+            if (dataStr === "[DONE]") break;
+
             try {
               const parsedData = JSON.parse(dataStr);
               if (parsedData.error) {
@@ -98,44 +113,50 @@ export function AIGenerator() {
               }
               if (parsedData.content) {
                 accumulatedText += parsedData.content;
-                
-                // 核心：实时解析截断的 JSON，一旦解析出有效的组件，立刻塞给预览区渲染
                 const partialComponents = parsePartialJSON(accumulatedText);
                 if (partialComponents && partialComponents.length > 0) {
                   setPreviewData(partialComponents);
                 }
               }
-            } catch (e) {
-              // 忽略解析单行 data 时的错误
-            }
+            } catch (e) { }
           }
         }
       }
-    } catch (error) {
-      console.error("请求异常:", error);
-      message.error("请求后端接口失败");
+    } catch (error: any) {
+      if (error.name === "AbortError") {
+        console.log("AI 生成已被中止");
+      } else {
+        console.error("请求异常:", error);
+        message.error("请求后端接口失败");
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  /**
+   * 确认 AI 生成的组件
+   */
   const handleConfirm = () => {
     if (previewData) {
-      applyAIGenerated(previewData);
-      setIsOpen(false); // 关闭弹窗
-      setPreviewData(null);
-      setPrompt("");
+      // 进主画布前，用 Zod 强力洗一遍数据，剥离脏属性，补充缺省值
+      const safeData = validateAndCleanComponents(previewData);
+      applyAIGenerated(safeData);
+      handleCloseModal();
     }
   };
 
+  /**
+   * 渲染弹窗内容
+   */
   const modalContent = isOpen ? (
-    <div 
+    <div
       className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/5 backdrop-blur-md transition-all p-4 animate-in fade-in duration-200"
-      onClick={() => setIsOpen(false)}
+      onClick={handleCloseModal}
     >
-      <div 
+      <div
         className="w-full max-w-[700px] bg-white/95 rounded-2xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.15)] overflow-hidden flex flex-col border border-slate-200/50 animate-in zoom-in-95 duration-200 ease-out"
-        onClick={(e) => e.stopPropagation()} 
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center px-6 py-5">
           <Sparkles className="w-7 h-7 text-indigo-600 mr-4 drop-shadow-sm" />
@@ -164,25 +185,23 @@ export function AIGenerator() {
           <>
             <div className="h-[1px] w-full bg-slate-100" />
             <div className="flex-1 overflow-y-auto bg-slate-50/80 p-6 custom-scrollbar relative max-h-[60vh]">
-              
-              {/* 如果已经有数据了，就直接渲染，并在角落悬浮 Loading 提示 */}
+
               {previewData && previewData.length > 0 ? (
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden relative min-h-[200px]">
                   <FormPreview overrideComponents={previewData} isEmbedded={true} />
-                  
+
                   {loading && (
                     <div className="absolute bottom-4 right-4 bg-white/95 backdrop-blur shadow-md px-3 py-1.5 rounded-full flex items-center gap-2 border border-indigo-50 animate-in fade-in zoom-in slide-in-from-bottom-2">
-                       <div className="w-3 h-3 border-2 border-indigo-200 rounded-full animate-spin border-t-indigo-500"></div>
-                       <span className="text-xs text-indigo-600 font-medium">AI 正在书写...</span>
+                      <div className="w-3 h-3 border-2 border-indigo-200 rounded-full animate-spin border-t-indigo-500"></div>
+                      <span className="text-xs text-indigo-600 font-medium">AI 正在书写...</span>
                     </div>
                   )}
                 </div>
               ) : loading ? (
-                /* 首字到达前，依然显示居中的大 Loading */
                 <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-4 py-12">
                   <div className="relative">
-                     <div className="w-12 h-12 border-4 border-indigo-100 rounded-full animate-spin border-t-indigo-500"></div>
-                     <Sparkles className="w-5 h-5 text-indigo-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                    <div className="w-12 h-12 border-4 border-indigo-100 rounded-full animate-spin border-t-indigo-500"></div>
+                    <Sparkles className="w-5 h-5 text-indigo-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
                   </div>
                   <p className="text-sm font-medium animate-pulse">正在理解您的需求...</p>
                 </div>
@@ -192,15 +211,15 @@ export function AIGenerator() {
             <div className="px-6 py-4 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
               <div className="flex items-center gap-5">
                 <span className="flex items-center gap-1.5">
-                  <kbd className="bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200 font-mono shadow-sm">ESC</kbd> 
-                  取消
+                  <kbd className="bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200 font-mono shadow-sm">ESC</kbd>
+                  取消并清空
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <kbd className="bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200 font-mono shadow-sm">↵</kbd> 
+                  <kbd className="bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200 font-mono shadow-sm">↵</kbd>
                   生成
                 </span>
               </div>
-              
+
               {previewData && !loading && (
                 <button
                   onClick={handleConfirm}

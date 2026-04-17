@@ -18,6 +18,7 @@ import {
 export const EditorCanvas: React.FC = () => {
   const { components, selectedId, selectComponent, reorderComponents } =
     useEditorStore();
+    /** 组件拖动传感器 */
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
@@ -171,7 +172,7 @@ export const EditorCanvas: React.FC = () => {
 
                   {/* 系统组件 */}
                   {comp.type === "button" && (
-                    <button className="w-full bg-brand text-white py-2.5 rounded-md font-medium mt-4 shadow-sm">
+                    <button className="w-full bg-indigo-600 text-white py-2.5 rounded-md font-medium mt-4 shadow-sm">
                       {comp.props.buttonText}
                     </button>
                   )}
