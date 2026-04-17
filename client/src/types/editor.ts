@@ -13,6 +13,15 @@ export type FormItemType =
   | "switch"
   | "cascader";
 
+// AI 对表单结构的修改补丁指令
+export interface FormPatchAction {
+  action: "add" | "update" | "remove";
+  targetId?: string;             // 目标组件的 id（用于定位插入位置、修改或删除）
+  position?: "before" | "after"; // 对于 'add' 操作，指定插入到目标的前面还是后面
+  component?: ComponentSchema;   // 对于 'add' 操作，提供新的组件结构
+  updates?: Partial<ComponentSchema>; // 对于 'update' 操作，提供要修改的属性
+}
+
 // 选项接口（支持无限极嵌套，用于 Cascader）
 export interface OptionItem {
   /** 选项标签 */
@@ -78,4 +87,5 @@ export interface EditorStore {
   undo: () => void;
   redo: () => void;
   applyAIGenerated: (newComponents: ComponentSchema[]) => void;
+  applyAIPatches: (patches: FormPatchAction[]) => void;
 }

@@ -172,6 +172,47 @@ export const useEditorStore = create<EditorStore>()(
             draft.splice(0, draft.length, ...newComponents);
           });
         },
+
+        /**
+         * 应用 AI 生成的表单结构补丁
+         * @param patches - 从 AI 生成器获取的补丁数组
+         */
+        applyAIPatches: (patches) => {
+          applyChange((draft) => {
+            patches.forEach((patch) => {
+              // 1. 删除操作
+              if (patch.action === "remove" && patch.targetId) {
+                const index = draft.findIndex((c) => c.id === patch.targetId);
+                if (index !== -1) draft.splice(index, 1);
+              }
+              // 2. 更新操作
+              else if (patch.action === "update" && patch.targetId && patch.updates) {
+                const component = draft.find((c) => c.id === patch.targetId);
+                if (component) {
+                  // 深度合并（如果涉及深层 props 可以手写，或使用 lodash merge）
+                  Object.assign(component, patch.updates);
+                }
+              }
+              // 3. 新增操作
+              else if (patch.action === "add" && patch.component) {
+                // 为了安全，确保 AI 给的新组件带上唯一的 id
+                const newComponent = { ...patch.component, id: patch.component.id || crypto.randomUUID() };
+
+                if (patch.targetId) {
+                  const index = draft.findIndex((c) => c.id === patch.targetId);
+                  if (index !== -1) {
+                    const insertIndex = patch.position === "before" ? index : index + 1;
+                    draft.splice(insertIndex, 0, newComponent);
+                  } else {
+                    draft.push(newComponent); // 没找到 target 就放最后
+                  }
+                } else {
+                  draft.push(newComponent);
+                }
+              }
+            });
+          });
+        },
       };
     },
     {

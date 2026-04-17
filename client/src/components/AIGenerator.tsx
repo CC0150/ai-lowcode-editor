@@ -31,7 +31,11 @@ export function AIGenerator() {
   const [loading, setLoading] = useState(false);
   const [previewData, setPreviewData] = useState<ComponentSchema[] | null>(null);
 
+  // 获取 Store 中的状态与方法
+  const currentComponents = useEditorStore((state) => state.components);
   const applyAIGenerated = useEditorStore((state) => state.applyAIGenerated);
+  const applyAIPatches = useEditorStore((state) => state.applyAIPatches); // 新增：局部补丁方法
+
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -77,65 +81,94 @@ export function AIGenerator() {
     setLoading(true);
     setPreviewData([]);
 
-    abortControllerRef.current = new AbortController();
-    let accumulatedText = "";
+    // 判断当前画布是否有组件
+    const isPatchMode = currentComponents.length > 0;
 
-    try {
-      const response = await fetch("http://localhost:3001/api/generate-form", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
-        signal: abortControllerRef.current.signal,
-      });
+    if (isPatchMode) {
+      // 画布不为空，执行局部 Patch 逻辑
+      try {
+        const response = await fetch("http://localhost:3001/api/patch-form", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt, currentComponents }),
+        });
+        const result = await response.json();
 
-      if (!response.body) throw new Error("无响应流");
+        if (result.success && result.data?.patches) {
+          applyAIPatches(result.data.patches);
+          message.success("已根据您的需求智能修改画布！");
+          handleCloseModal(); 
+        } else {
+          throw new Error(result.error || "生成补丁失败");
+        }
+      } catch (error) {
+        console.error("AI 局部修改异常:", error);
+        message.error("AI 局部修改失败，请检查服务状态");
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      // 画布为空，执行原有的 SSE 流式全量生成逻辑
+      abortControllerRef.current = new AbortController();
+      let accumulatedText = "";
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder("utf-8");
+      try {
+        const response = await fetch("http://localhost:3001/api/generate-form", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt }),
+          signal: abortControllerRef.current.signal,
+        });
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+        if (!response.body) throw new Error("无响应流");
 
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split("\n");
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder("utf-8");
 
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            const dataStr = line.slice(6);
-            if (dataStr === "[DONE]") break;
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-            try {
-              const parsedData = JSON.parse(dataStr);
-              if (parsedData.error) {
-                message.error(parsedData.error);
-                return;
-              }
-              if (parsedData.content) {
-                accumulatedText += parsedData.content;
-                const partialComponents = parsePartialJSON(accumulatedText);
-                if (partialComponents && partialComponents.length > 0) {
-                  setPreviewData(partialComponents);
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split("\n");
+
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              const dataStr = line.slice(6);
+              if (dataStr === "[DONE]") break;
+
+              try {
+                const parsedData = JSON.parse(dataStr);
+                if (parsedData.error) {
+                  message.error(parsedData.error);
+                  return;
                 }
-              }
-            } catch (e) { }
+                if (parsedData.content) {
+                  accumulatedText += parsedData.content;
+                  const partialComponents = parsePartialJSON(accumulatedText);
+                  if (partialComponents && partialComponents.length > 0) {
+                    setPreviewData(partialComponents);
+                  }
+                }
+              } catch (e) { }
+            }
           }
         }
+      } catch (error: any) {
+        if (error.name === "AbortError") {
+          console.log("AI 生成已被中止");
+        } else {
+          console.error("请求异常:", error);
+          message.error("请求后端接口失败");
+        }
+      } finally {
+        setLoading(false);
       }
-    } catch (error: any) {
-      if (error.name === "AbortError") {
-        console.log("AI 生成已被中止");
-      } else {
-        console.error("请求异常:", error);
-        message.error("请求后端接口失败");
-      }
-    } finally {
-      setLoading(false);
     }
   };
 
   /**
-   * 确认 AI 生成的组件
+   * 确认 AI 生成的组件 (仅全量生成模式使用)
    */
   const handleConfirm = () => {
     if (previewData) {
@@ -145,6 +178,8 @@ export function AIGenerator() {
       handleCloseModal();
     }
   };
+
+  const isPatchMode = currentComponents.length > 0;
 
   /**
    * 渲染弹窗内容
@@ -164,7 +199,11 @@ export function AIGenerator() {
             ref={inputRef}
             className="flex-1 bg-transparent text-xl text-slate-800 placeholder-slate-300 outline-none resize-none font-medium leading-relaxed"
             rows={prompt.length > 30 ? 2 : 1}
-            placeholder="例如：创建一个面试登记表，包含姓名、手机号和技术栈多选框..."
+            placeholder={
+              isPatchMode
+                ? "例如：在姓名下面加一个邮箱字段..."
+                : "例如：创建一个面试登记表，包含姓名、手机号..."
+            }
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             onKeyDown={(e) => {
@@ -186,49 +225,65 @@ export function AIGenerator() {
             <div className="h-[1px] w-full bg-slate-100" />
             <div className="flex-1 overflow-y-auto bg-slate-50/80 p-6 custom-scrollbar relative max-h-[60vh]">
 
-              {previewData && previewData.length > 0 ? (
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden relative min-h-[200px]">
-                  <FormPreview overrideComponents={previewData} isEmbedded={true} />
-
-                  {loading && (
-                    <div className="absolute bottom-4 right-4 bg-white/95 backdrop-blur shadow-md px-3 py-1.5 rounded-full flex items-center gap-2 border border-indigo-50 animate-in fade-in zoom-in slide-in-from-bottom-2">
-                      <div className="w-3 h-3 border-2 border-indigo-200 rounded-full animate-spin border-t-indigo-500"></div>
-                      <span className="text-xs text-indigo-600 font-medium">AI 正在书写...</span>
-                    </div>
-                  )}
-                </div>
-              ) : loading ? (
+              {/* 局部修改时的 Loading 态 */}
+              {isPatchMode && loading ? (
                 <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-4 py-12">
                   <div className="relative">
                     <div className="w-12 h-12 border-4 border-indigo-100 rounded-full animate-spin border-t-indigo-500"></div>
                     <Sparkles className="w-5 h-5 text-indigo-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
                   </div>
-                  <p className="text-sm font-medium animate-pulse">正在理解您的需求...</p>
+                  <p className="text-sm font-medium animate-pulse">正在分析当前画布并应用修改...</p>
                 </div>
-              ) : null}
+              ) :
+                /* 流式全量生成时的预览态 */
+                previewData && previewData.length > 0 ? (
+                  <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden relative min-h-[200px]">
+                    <FormPreview overrideComponents={previewData} isEmbedded={true} />
+
+                    {loading && (
+                      <div className="absolute bottom-4 right-4 bg-white/95 backdrop-blur shadow-md px-3 py-1.5 rounded-full flex items-center gap-2 border border-indigo-50 animate-in fade-in zoom-in slide-in-from-bottom-2">
+                        <div className="w-3 h-3 border-2 border-indigo-200 rounded-full animate-spin border-t-indigo-500"></div>
+                        <span className="text-xs text-indigo-600 font-medium">AI 正在书写...</span>
+                      </div>
+                    )}
+                  </div>
+                ) :
+                  /* 流式全量生成初期的 Loading 态 */
+                  !isPatchMode && loading ? (
+                    <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-4 py-12">
+                      <div className="relative">
+                        <div className="w-12 h-12 border-4 border-indigo-100 rounded-full animate-spin border-t-indigo-500"></div>
+                        <Sparkles className="w-5 h-5 text-indigo-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                      </div>
+                      <p className="text-sm font-medium animate-pulse">正在理解您的需求...</p>
+                    </div>
+                  ) : null}
             </div>
 
-            <div className="px-6 py-4 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-              <div className="flex items-center gap-5">
-                <span className="flex items-center gap-1.5">
-                  <kbd className="bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200 font-mono shadow-sm">ESC</kbd>
-                  取消并清空
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <kbd className="bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200 font-mono shadow-sm">↵</kbd>
-                  生成
-                </span>
+            {/* 仅在非局部修改模式，或者预览已存在的情况下展示底部操作栏 */}
+            {(!isPatchMode || previewData) && (
+              <div className="px-6 py-4 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                <div className="flex items-center gap-5">
+                  <span className="flex items-center gap-1.5">
+                    <kbd className="bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200 font-mono shadow-sm">ESC</kbd>
+                    取消并清空
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <kbd className="bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200 font-mono shadow-sm">↵</kbd>
+                    生成
+                  </span>
+                </div>
+
+                {previewData && !loading && (
+                  <button
+                    onClick={handleConfirm}
+                    className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg font-medium transition-colors shadow-md active:scale-95"
+                  >
+                    确认导入 <CornerDownLeft className="w-4 h-4" />
+                  </button>
+                )}
               </div>
-
-              {previewData && !loading && (
-                <button
-                  onClick={handleConfirm}
-                  className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg font-medium transition-colors shadow-md active:scale-95"
-                >
-                  确认导入 <CornerDownLeft className="w-4 h-4" />
-                </button>
-              )}
-            </div>
+            )}
           </>
         )}
       </div>

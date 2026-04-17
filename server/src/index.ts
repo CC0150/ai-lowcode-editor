@@ -161,6 +161,47 @@ app.post("/api/generate-form", async (req, res) => {
   }
 });
 
+// AI 表单局部增删改 (Patch) 接口
+app.post("/api/patch-form", async (req, res) => {
+  const { prompt, currentComponents } = req.body;
+
+  if (!prompt) return res.status(400).json({ error: "参数缺失" });
+
+  const PATCH_PROMPT = `
+你是一个低代码前端专家。
+目前画布中已有的表单组件列表 (JSON) 如下：
+${JSON.stringify(currentComponents)}
+
+用户的修改需求是："${prompt}"
+
+请你分析需求，生成一个对当前表单的修改补丁数组 (patches)。
+支持的操作动作(action)包括：
+1. 新增: { "action": "add", "targetId": "参考的组件id", "position": "before" 或 "after", "component": { 新组件的完整JSON } }
+2. 更新: { "action": "update", "targetId": "要修改的组件id", "updates": { 需要更新的属性 } }
+3. 删除: { "action": "remove", "targetId": "要删除的组件id" }
+
+要求：
+1. 必须输出一个 JSON 对象，包含 "patches" 数组。
+2. targetId 必须是当前组件列表中存在的 id。如果是由于当前画布为空而新增，targetId 可省略。
+3. 请不要包含任何 markdown，仅输出合法 JSON。
+  `;
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "deepseek-chat",
+      messages: [{ role: "user", content: PATCH_PROMPT }],
+      response_format: { type: "json_object" }, // 强制输出 JSON
+    });
+
+    res.json({
+      success: true,
+      data: JSON.parse(completion?.choices?.[0]?.message?.content || '{"patches":[]}'),
+    });
+  } catch (error) {
+    res.status(500).json({ error: "AI 生成补丁失败" });
+  }
+});
+
 const PORT = 3001;
 app.listen(PORT, () => {
   console.log(`后端服务已启动: http://localhost:${PORT}`);
