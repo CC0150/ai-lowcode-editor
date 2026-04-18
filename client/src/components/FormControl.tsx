@@ -10,6 +10,7 @@ import {
   Switch,
   Cascader,
   DatePicker,
+  Space,
 } from "antd";
 import dayjs from "dayjs";
 
@@ -102,8 +103,15 @@ export const FormControl: React.FC<FormControlProps> = ({
           <Radio.Group
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            options={normalizedOptions}
-          />
+          >
+            <Space direction={safeProps.direction === 'horizontal' ? 'horizontal' : 'vertical'}>
+              {normalizedOptions.map((opt: any) => (
+                <Radio key={opt.value} value={opt.value}>
+                  {opt.label}
+                </Radio>
+              ))}
+            </Space>
+          </Radio.Group>
         </div>
       );
 
@@ -113,8 +121,15 @@ export const FormControl: React.FC<FormControlProps> = ({
           <Checkbox.Group
             value={value || []}
             onChange={(checkedValues) => onChange(checkedValues)}
-            options={normalizedOptions}
-          />
+          >
+            <Space direction={safeProps.direction === 'horizontal' ? 'horizontal' : 'vertical'}>
+              {normalizedOptions.map((opt: any) => (
+                <Checkbox key={opt.value} value={opt.value}>
+                  {opt.label}
+                </Checkbox>
+              ))}
+            </Space>
+          </Checkbox.Group>
         </div>
       );
 
@@ -196,10 +211,10 @@ export const FormControl: React.FC<FormControlProps> = ({
           <label
             htmlFor={`file_${uniqueId}`}
             className={`w-full border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center cursor-pointer transition-all ${hasError
-                ? "border-red-300 bg-red-50 hover:bg-red-100"
-                : isDragging
-                  ? "border-brand bg-slate-100 shadow-sm scale-[1.02]" // 拖拽悬浮时的反馈效果
-                  : "border-slate-300 bg-slate-50 hover:bg-slate-100 hover:border-brand hover:shadow-sm"
+              ? "border-red-300 bg-red-50 hover:bg-red-100"
+              : isDragging
+                ? "border-brand bg-slate-100 shadow-sm scale-[1.02]" // 拖拽悬浮时的反馈效果
+                : "border-slate-300 bg-slate-50 hover:bg-slate-100 hover:border-brand hover:shadow-sm"
               }`}
           >
             {value ? (

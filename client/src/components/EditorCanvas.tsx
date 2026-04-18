@@ -109,7 +109,7 @@ export const EditorCanvas: React.FC = () => {
                     </select>
                   )}
                   {comp.type === "radio" && (
-                    <div className="flex gap-4 mt-1">
+                    <div className={`flex mt-1 gap-4 ${comp.props.direction === 'horizontal' ? 'flex-row flex-wrap' : 'flex-col'}`}>
                       {(comp.props.options?.length
                         ? comp.props.options
                         : [{ label: "选项一" }, { label: "选项二" }]
@@ -122,7 +122,7 @@ export const EditorCanvas: React.FC = () => {
                     </div>
                   )}
                   {comp.type === "checkbox" && (
-                    <div className="flex gap-4 mt-1">
+                    <div className={`flex mt-1 gap-4 ${comp.props.direction === 'horizontal' ? 'flex-row flex-wrap' : 'flex-col'}`}>
                       {(comp.props.options?.length
                         ? comp.props.options
                         : [{ label: "选项一" }, { label: "选项二" }]

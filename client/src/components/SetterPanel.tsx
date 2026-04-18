@@ -30,21 +30,21 @@ export const SetterPanel = () => {
   } = useEditorStore();
   const selectedComponent = components.find((c) => c.id === selectedId);
 
-  // --- AI Copilot 状态 ---
+  // AI Copilot 状态
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
   const [copilotPrompt, setCopilotPrompt] = useState("");
   const [isCopilotLoading, setIsCopilotLoading] = useState(false);
   const copilotInputRef = useRef<HTMLInputElement>(null);
 
-  // --- AI Regex 状态 ---
+  // AI Regex 状态
   const [isRegexAIOpen, setIsRegexAIOpen] = useState(false);
   const [regexPrompt, setRegexPrompt] = useState("");
   const [isRegexLoading, setIsRegexLoading] = useState(false);
 
-  // --- AI 选项生成状态 ---
+  // AI 选项生成状态
   const [isOptionsAILoading, setIsOptionsAILoading] = useState(false);
 
-  // --- AI 选项生成处理函数 ---
+  // AI 选项生成处理函数
   const handleGenerateOptions = async (prompt: string) => {
     if (!selectedComponent) return;
     setIsOptionsAILoading(true);
@@ -200,7 +200,7 @@ export const SetterPanel = () => {
         </div>
       </header>
 
-      {/* --- AI Copilot 浮层交互区 --- */}
+      {/* AI Copilot 浮层交互区 */}
       {isCopilotOpen && (
         <div className="shrink-0 p-4 bg-indigo-600/5 border-b border-indigo-100 shadow-inner animate-in slide-in-from-top-2">
           <div className="flex items-center gap-2 mb-2">
@@ -387,6 +387,37 @@ export const SetterPanel = () => {
               </div>
             </div>
           )}
+
+          {/* 排列方向切换 (仅作用于 Radio 和 Checkbox) */}
+          {(selectedComponent.type === "radio" ||
+            selectedComponent.type === "checkbox") && (
+              <div className="flex flex-col gap-1.5 mb-3">
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  排列方向
+                </label>
+                <div className="flex bg-slate-100 p-1 rounded-lg">
+                  <button
+                    onClick={() => updateProps(selectedComponent.id, { direction: 'horizontal' })}
+                    className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${selectedComponent.props.direction === 'horizontal'
+                        ? 'bg-white text-indigo-600 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-700'
+                      }`}
+                  >
+                    水平排列
+                  </button>
+                  <button
+                    onClick={() => updateProps(selectedComponent.id, { direction: 'vertical' })}
+                    className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${selectedComponent.props.direction !== 'horizontal'
+                        ? 'bg-white text-indigo-600 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-700'
+                      }`}
+                  >
+                    竖直排列
+                  </button>
+                </div>
+              </div>
+            )}
+
           {(selectedComponent.type === "radio" ||
             selectedComponent.type === "select" ||
             selectedComponent.type === "checkbox") && (

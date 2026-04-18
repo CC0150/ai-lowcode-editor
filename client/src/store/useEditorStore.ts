@@ -63,11 +63,16 @@ export const useEditorStore = create<EditorStore>()(
           if (type === "input" || type === "textarea" || type === "date")
             defaultProps.placeholder = "请输入";
           else if (type === "button") defaultProps.buttonText = "提交表单";
-          else if (isOptionsType)
+          else if (isOptionsType) {
             defaultProps.options = [
               { label: "选项 1", value: "1" },
               { label: "选项 2", value: "2" },
             ];
+            // 默认排列为竖向排列
+            if (type === "radio" || type === "checkbox") {
+              defaultProps.direction = "vertical";
+            }
+          }
           else if (type === "cascader")
             defaultProps.options = [
               {
