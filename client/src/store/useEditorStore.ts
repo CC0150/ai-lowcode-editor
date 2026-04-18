@@ -6,7 +6,7 @@ import type {
   EditorStore,
   FormItemType,
 } from "../types/editor";
-
+import { v4 as uuidv4 } from "uuid";
 // 开启 Immer 的 JSON Patch 补丁功能
 enablePatches();
 
@@ -77,8 +77,7 @@ export const useEditorStore = create<EditorStore>()(
             if (type === "radio" || type === "checkbox") {
               defaultProps.direction = "vertical";
             }
-          }
-          else if (type === "cascader")
+          } else if (type === "cascader")
             defaultProps.options = [
               {
                 label: "选项 1",
@@ -93,7 +92,7 @@ export const useEditorStore = create<EditorStore>()(
           }
 
           const newComponent: ComponentSchema = {
-            id: crypto.randomUUID(),
+            id: uuidv4(),
             type,
             label: `新建${labelMap[type]}`,
             required: false,
@@ -171,7 +170,10 @@ export const useEditorStore = create<EditorStore>()(
           }),
 
         // 接收 AI 生成的组件及可选的标题
-        applyAIGenerated: (newComponents: ComponentSchema[], title?: string) => {
+        applyAIGenerated: (
+          newComponents: ComponentSchema[],
+          title?: string,
+        ) => {
           applyChange((draft) => {
             draft.splice(0, draft.length, ...newComponents);
           });
@@ -186,17 +188,25 @@ export const useEditorStore = create<EditorStore>()(
               if (patch.action === "remove" && patch.targetId) {
                 const index = draft.findIndex((c) => c.id === patch.targetId);
                 if (index !== -1) draft.splice(index, 1);
-              } else if (patch.action === "update" && patch.targetId && patch.updates) {
+              } else if (
+                patch.action === "update" &&
+                patch.targetId &&
+                patch.updates
+              ) {
                 const component = draft.find((c) => c.id === patch.targetId);
                 if (component) {
                   Object.assign(component, patch.updates);
                 }
               } else if (patch.action === "add" && patch.component) {
-                const newComponent = { ...patch.component, id: patch.component.id || crypto.randomUUID() };
+                const newComponent = {
+                  ...patch.component,
+                  id: patch.component.id || uuidv4(),
+                };
                 if (patch.targetId) {
                   const index = draft.findIndex((c) => c.id === patch.targetId);
                   if (index !== -1) {
-                    const insertIndex = patch.position === "before" ? index : index + 1;
+                    const insertIndex =
+                      patch.position === "before" ? index : index + 1;
                     draft.splice(insertIndex, 0, newComponent);
                   } else {
                     draft.push(newComponent);

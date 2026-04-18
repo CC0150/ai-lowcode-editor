@@ -157,7 +157,7 @@ export default function GeneratedForm() {
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
         {/* 头部 */}
         <header className="px-6 py-4 border-b flex items-center justify-between bg-gray-50/50">
           <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
