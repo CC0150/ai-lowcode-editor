@@ -1,9 +1,9 @@
-import React, { useState } from "react";
+import React from "react";
 import { ChevronDown } from "lucide-react";
 import { useUIStore } from "../store/useUIStore";
 
 interface PanelSectionProps {
-  id?: string;
+  id: string;
   title: string;
   icon: React.ElementType;
   children: React.ReactNode;

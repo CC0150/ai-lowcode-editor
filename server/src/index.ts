@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import OpenAI from "openai";
+import type { Request, Response } from "express";
 
 dotenv.config();
 
@@ -61,7 +62,7 @@ interface ComponentSchema {
 不要输出任何解释性文字或 Markdown 标记。
 `;
 // 局部组件 AI 修改接口
-app.post("/api/modify-component", async (req, res) => {
+app.post("/api/modify-component", async (req: Request, res: Response) => {
   const { component, prompt } = req.body;
   if (!component || !prompt) return res.status(400).json({ error: "参数缺失" });
 
@@ -91,7 +92,7 @@ ${JSON.stringify(component)}
 });
 
 // AI 智能正则校验接口
-app.post("/api/generate-regex", async (req, res) => {
+app.post("/api/generate-regex", async (req: Request, res: Response) => {
   const { prompt } = req.body;
   if (!prompt) return res.status(400).json({ error: "参数缺失" });
 
@@ -119,7 +120,7 @@ app.post("/api/generate-regex", async (req, res) => {
 });
 
 // AI 表单生成接口
-app.post("/api/generate-form", async (req, res) => {
+app.post("/api/generate-form", async (req: Request, res: Response) => {
   const { prompt } = req.body;
 
   if (!prompt) {
@@ -165,7 +166,7 @@ app.post("/api/generate-form", async (req, res) => {
 });
 
 // AI 表单局部增删改 (Patch) 接口
-app.post("/api/patch-form", async (req, res) => {
+app.post("/api/patch-form", async (req: Request, res: Response) => {
   const { prompt, currentComponents } = req.body;
 
   if (!prompt) return res.status(400).json({ error: "参数缺失" });
@@ -198,7 +199,9 @@ ${JSON.stringify(currentComponents)}
 
     res.json({
       success: true,
-      data: JSON.parse(completion?.choices?.[0]?.message?.content || '{"patches":[]}'),
+      data: JSON.parse(
+        completion?.choices?.[0]?.message?.content || '{"patches":[]}',
+      ),
     });
   } catch (error) {
     res.status(500).json({ error: "AI 生成补丁失败" });

@@ -42,12 +42,13 @@ export const FormControl: React.FC<FormControlProps> = ({
   // 兼容性处理：AI 可能误把 options 生成为字符串数组 ["A", "B"] 而不是对象数组
   const normalizedOptions = Array.isArray(safeProps.options)
     ? safeProps.options.map((opt: any) =>
-      typeof opt === "string" ? { label: opt, value: opt } : opt
-    )
+        typeof opt === "string" ? { label: opt, value: opt } : opt,
+      )
     : [];
 
   // 让弹出层挂载在当前 DOM 下，解决弹窗/侧边栏中下拉框被遮挡或滚动错位的问题
-  const getPopupContainer = (triggerNode: HTMLElement) => triggerNode.parentNode as HTMLElement;
+  const getPopupContainer = (triggerNode: HTMLElement) =>
+    triggerNode.parentNode as HTMLElement;
 
   switch (schema.type) {
     case "input":
@@ -77,7 +78,7 @@ export const FormControl: React.FC<FormControlProps> = ({
       return (
         <DatePicker
           value={value ? dayjs(value) : null}
-          onChange={(date, dateString) => onChange(dateString)}
+          onChange={(_date, dateString) => onChange(dateString)}
           status={antStatus}
           className="w-full"
           getPopupContainer={getPopupContainer}
@@ -100,11 +101,12 @@ export const FormControl: React.FC<FormControlProps> = ({
     case "radio":
       return (
         <div className="mt-1">
-          <Radio.Group
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-          >
-            <Space direction={safeProps.direction === 'horizontal' ? 'horizontal' : 'vertical'}>
+          <Radio.Group value={value} onChange={(e) => onChange(e.target.value)}>
+            <Space
+              direction={
+                safeProps.direction === "horizontal" ? "horizontal" : "vertical"
+              }
+            >
               {normalizedOptions.map((opt: any) => (
                 <Radio key={opt.value} value={opt.value}>
                   {opt.label}
@@ -122,7 +124,11 @@ export const FormControl: React.FC<FormControlProps> = ({
             value={value || []}
             onChange={(checkedValues) => onChange(checkedValues)}
           >
-            <Space direction={safeProps.direction === 'horizontal' ? 'horizontal' : 'vertical'}>
+            <Space
+              direction={
+                safeProps.direction === "horizontal" ? "horizontal" : "vertical"
+              }
+            >
               {normalizedOptions.map((opt: any) => (
                 <Checkbox key={opt.value} value={opt.value}>
                   {opt.label}
@@ -210,12 +216,13 @@ export const FormControl: React.FC<FormControlProps> = ({
           />
           <label
             htmlFor={`file_${uniqueId}`}
-            className={`w-full border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center cursor-pointer transition-all ${hasError
-              ? "border-red-300 bg-red-50 hover:bg-red-100"
-              : isDragging
-                ? "border-brand bg-slate-100 shadow-sm scale-[1.02]" // 拖拽悬浮时的反馈效果
-                : "border-slate-300 bg-slate-50 hover:bg-slate-100 hover:border-brand hover:shadow-sm"
-              }`}
+            className={`w-full border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center cursor-pointer transition-all ${
+              hasError
+                ? "border-red-300 bg-red-50 hover:bg-red-100"
+                : isDragging
+                  ? "border-brand bg-slate-100 shadow-sm scale-[1.02]" // 拖拽悬浮时的反馈效果
+                  : "border-slate-300 bg-slate-50 hover:bg-slate-100 hover:border-brand hover:shadow-sm"
+            }`}
           >
             {value ? (
               <div className="flex items-center gap-2 text-brand">
@@ -234,7 +241,9 @@ export const FormControl: React.FC<FormControlProps> = ({
               </div>
             ) : (
               <>
-                <UploadCloud className={`w-8 h-8 mb-2 transition-colors ${isDragging ? "text-brand" : "text-slate-400"}`} />
+                <UploadCloud
+                  className={`w-8 h-8 mb-2 transition-colors ${isDragging ? "text-brand" : "text-slate-400"}`}
+                />
                 <span className="text-sm text-slate-600 font-medium">
                   {isDragging ? "松开鼠标立即上传" : "点击或拖拽文件上传"}
                 </span>

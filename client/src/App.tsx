@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useEditorStore } from "./store/useEditorStore";
 import {
-  Box,
   PanelLeftClose,
   PanelLeftOpen,
   PanelRightClose,
