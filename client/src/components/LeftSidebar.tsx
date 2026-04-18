@@ -127,24 +127,6 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({ isOpen }) => {
               ))}
             </div>
           </MaterialSection>
-
-          <MaterialSection
-            panelId="material-system"
-            title="系统组件"
-            defaultOpen={true}
-          >
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => addComponent("button")}
-                className="flex flex-col items-center justify-center p-3 border border-gray-200 rounded-lg hover:border-brand hover:text-brand bg-gray-50 hover:bg-white transition-all group shadow-sm"
-              >
-                <MousePointer2 className="w-5 h-5 mb-2 text-gray-500 group-hover:text-brand" />
-                <span className="text-xs font-medium text-gray-600 group-hover:text-brand">
-                  提交按钮
-                </span>
-              </button>
-            </div>
-          </MaterialSection>
         </div>
 
         {/* 修改点 2：底部悬浮操作区 */}

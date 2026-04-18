@@ -16,9 +16,15 @@ import {
 } from "@dnd-kit/sortable";
 
 export const EditorCanvas: React.FC = () => {
-  const { components, selectedId, selectComponent, reorderComponents, canvasTitle, updateTitle } =
-    useEditorStore();
-    /** 组件拖动传感器 */
+  const {
+    components,
+    selectedId,
+    selectComponent,
+    reorderComponents,
+    canvasTitle,
+    updateTitle,
+  } = useEditorStore();
+  /** 组件拖动传感器 */
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
@@ -43,11 +49,11 @@ export const EditorCanvas: React.FC = () => {
       >
         <div className="border-b-2 border-gray-100 pb-4 mb-8">
           <input
-          value={canvasTitle}
-          onChange={(e) => updateTitle(e.target.value)}
-          className="text-2xl font-bold text-center text-gray-800 w-full border-none focus:ring-0 bg-transparent hover:bg-gray-50 rounded transition-colors"
-          placeholder="请输入表单标题"
-        />
+            value={canvasTitle}
+            onChange={(e) => updateTitle(e.target.value)}
+            className="text-2xl font-bold text-center text-gray-800 w-full border-none focus:ring-0 bg-transparent hover:bg-gray-50 rounded transition-colors"
+            placeholder="请输入表单标题"
+          />
           <p className="text-gray-500 text-sm text-center mt-2">
             请如实填写以下信息
           </p>
@@ -73,12 +79,10 @@ export const EditorCanvas: React.FC = () => {
                 }}
               >
                 <div className="flex flex-col gap-2 pointer-events-none">
-                  {comp.type !== "button" && (
-                    <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
-                      {index + 1}. {comp.label}{" "}
-                      {comp.required && <span className="text-red-500">*</span>}
-                    </label>
-                  )}
+                  <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
+                    {index + 1}. {comp.label}{" "}
+                    {comp.required && <span className="text-red-500">*</span>}
+                  </label>
 
                   {/* 基础组件 */}
                   {comp.type === "input" && (
@@ -112,7 +116,9 @@ export const EditorCanvas: React.FC = () => {
                     </select>
                   )}
                   {comp.type === "radio" && (
-                    <div className={`flex mt-1 gap-4 ${comp.props.direction === 'horizontal' ? 'flex-row flex-wrap' : 'flex-col'}`}>
+                    <div
+                      className={`flex mt-1 gap-4 ${comp.props.direction === "horizontal" ? "flex-row flex-wrap" : "flex-col"}`}
+                    >
                       {(comp.props.options?.length
                         ? comp.props.options
                         : [{ label: "选项一" }, { label: "选项二" }]
@@ -125,7 +131,9 @@ export const EditorCanvas: React.FC = () => {
                     </div>
                   )}
                   {comp.type === "checkbox" && (
-                    <div className={`flex mt-1 gap-4 ${comp.props.direction === 'horizontal' ? 'flex-row flex-wrap' : 'flex-col'}`}>
+                    <div
+                      className={`flex mt-1 gap-4 ${comp.props.direction === "horizontal" ? "flex-row flex-wrap" : "flex-col"}`}
+                    >
                       {(comp.props.options?.length
                         ? comp.props.options
                         : [{ label: "选项一" }, { label: "选项二" }]
@@ -171,13 +179,6 @@ export const EditorCanvas: React.FC = () => {
                       <span>请选择级联层级...</span>
                       <ListTree className="w-4 h-4" />
                     </div>
-                  )}
-
-                  {/* 系统组件 */}
-                  {comp.type === "button" && (
-                    <button className="w-full bg-indigo-600 text-white py-2.5 rounded-md font-medium mt-4 shadow-sm">
-                      {comp.props.buttonText}
-                    </button>
                   )}
                 </div>
               </SortableWrapper>

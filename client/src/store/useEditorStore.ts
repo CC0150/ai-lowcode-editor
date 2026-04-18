@@ -57,7 +57,6 @@ export const useEditorStore = create<EditorStore>()(
             checkbox: "多项选择",
             select: "下拉选择",
             date: "日期选择",
-            button: "提交按钮",
             upload: "文件上传",
             rate: "评分星级",
             switch: "开关选择",
@@ -67,7 +66,6 @@ export const useEditorStore = create<EditorStore>()(
           const defaultProps: any = {};
           if (type === "input" || type === "textarea" || type === "date")
             defaultProps.placeholder = "请输入";
-          else if (type === "button") defaultProps.buttonText = "提交表单";
           else if (isOptionsType) {
             defaultProps.options = [
               { label: "选项 1", value: "1" },

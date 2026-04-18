@@ -7,7 +7,7 @@ interface Props {
 }
 
 export const ExportModal: React.FC<Props> = ({ onClose }) => {
-  const { components } = useEditorStore();
+  const { components, canvasTitle } = useEditorStore();
   const [activeTab, setActiveTab] = useState<"json" | "react">("json");
   const [copied, setCopied] = useState(false);
 
@@ -18,172 +18,159 @@ export const ExportModal: React.FC<Props> = ({ onClose }) => {
   const generateReactCode = () => {
     // 检查是否包含特定组件以按需引入
     const hasDate = components.some((c) => c.type === "date");
+
     const antComponents = Array.from(
       new Set([
         "Form",
-        "Button",
+        "Button", // 确保引入 Button
         "Input",
-        ...components.map((c) => {
-          switch (c.type) {
-            case "select":
-              return "Select";
-            case "radio":
-              return "Radio";
-            case "checkbox":
-              return "Checkbox";
-            case "rate":
-              return "Rate";
-            case "switch":
-              return "Switch";
-            case "date":
-              return "DatePicker";
-            case "cascader":
-              return "Cascader";
-            default:
-              return "";
-          }
-        }),
+        "message",
+        ...(components
+          .map((c) => {
+            switch (c.type) {
+              case "select":
+                return "Select";
+              case "radio":
+                return "Radio";
+              case "checkbox":
+                return "Checkbox";
+              case "rate":
+                return "Rate";
+              case "switch":
+                return "Switch";
+              case "cascader":
+                return "Cascader";
+              case "date":
+                return "DatePicker";
+              case "upload":
+                return "Upload";
+              default:
+                return null;
+            }
+          })
+          .filter(Boolean) as string[]),
       ]),
-    )
-      .filter(Boolean)
-      .join(", ");
+    );
 
-    return `import React, { useState } from 'react';
-import { ${antComponents} } from 'antd';
+    const itemsJsx = components
+      .map((comp) => {
+        const commonProps = `label="${comp.label}" name="${comp.id}" ${comp.required ? "rules={[{ required: true, message: '请输入${comp.label}' }]}" : ""}`;
+
+        switch (comp.type) {
+          case "input":
+            return `<Form.Item ${commonProps}>\n            <Input placeholder="${comp.props.placeholder || "请输入"}" />\n          </Form.Item>`;
+          case "textarea":
+            return `<Form.Item ${commonProps}>\n            <Input.TextArea placeholder="${comp.props.placeholder || "请输入"}" rows={4} />\n          </Form.Item>`;
+          case "select":
+            return `<Form.Item ${commonProps}>\n            <Select placeholder="请选择" options={${JSON.stringify(comp.props.options || [])}} />\n          </Form.Item>`;
+          case "radio":
+            return `<Form.Item ${commonProps}>\n            <Radio.Group options={${JSON.stringify(comp.props.options || [])}} />\n          </Form.Item>`;
+          case "checkbox":
+            return `<Form.Item ${commonProps}>\n            <Checkbox.Group options={${JSON.stringify(comp.props.options || [])}} />\n          </Form.Item>`;
+          case "date":
+            return `<Form.Item ${commonProps}>\n            <DatePicker style={{ width: '100%' }} />\n          </Form.Item>`;
+          case "rate":
+            return `<Form.Item ${commonProps}>\n            <Rate count={${comp.props.maxRate || 5}} />\n          </Form.Item>`;
+          case "switch":
+            return `<Form.Item ${commonProps} valuePropName="checked">\n            <Switch unCheckedChildren="${comp.props.inactiveText || "关闭"}" checkedChildren="${comp.props.activeText || "开启"}" />\n          </Form.Item>`;
+          case "upload":
+            return `<Form.Item ${commonProps} valuePropName="fileList" getValueFromEvent={(e) => Array.isArray(e) ? e : e?.fileList}>\n            <Upload.Dragger action="/upload" listType="picture">\n              <p className="ant-upload-text">点击或拖拽文件上传</p>\n            </Upload.Dragger>\n          </Form.Item>`;
+          case "cascader":
+            return `<Form.Item ${commonProps}>\n            <Cascader options={${JSON.stringify(comp.props.options || [])}} placeholder="请选择" />\n          </Form.Item>`;
+          default:
+            return null;
+        }
+      })
+      .filter(Boolean)
+      .join("\n\n          ");
+
+    return `import React from 'react';
+import { ${antComponents.join(", ")} } from 'antd';
 ${hasDate ? "import dayjs from 'dayjs';" : ""}
 
-export default function GeneratedForm() {
+/**
+ * AI 生成的表单组件 - ${canvasTitle}
+ */
+const App: React.FC = () => {
   const [form] = Form.useForm();
 
-  const onFinish = (values) => {
-    console.log("提交的数据：", values);
-    // 这里可以接入真实的 API
+  const onFinish = (values: any) => {
+    console.log('表单提交数据:', values);
+    message.success('提交成功！');
   };
 
   return (
-    <div className="p-8 max-w-3xl mx-auto bg-white rounded-xl shadow-lg mt-10">
-      <div className="mb-8 border-b pb-4">
-        <h2 className="text-2xl font-bold text-gray-800">预览表单</h2>
-        <p className="text-gray-500 text-sm mt-1">此表单由 AI 低代码平台自动生成</p>
-      </div>
+    <div style={{ padding: '40px 20px', background: '#f8fafc', minHeight: '100vh', display: 'flex', justifyContent: 'center' }}>
+      <div style={{ width: '100%', maxWidth: 640, background: '#fff', padding: 40, borderRadius: 16, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}>
+        <div style={{ marginBottom: 32, textAlign: 'center' }}>
+          <h1 style={{ fontSize: 24, fontWeight: 800, color: '#1e293b', margin: 0 }}>${canvasTitle}</h1>
+          <p style={{ color: '#64748b', marginTop: 8 }}>请填写以下信息完成提交</p>
+        </div>
 
-      <Form
-        form={form}
-        layout="vertical"
-        onFinish={onFinish}
-        initialValues={{}}
-        scrollToFirstError
-      >
-        ${components
-          .map((comp) => {
-            // 处理显示逻辑
-            const condition = comp.visibleRule
-              ? `form.getFieldValue('${comp.visibleRule.sourceId}') === '${comp.visibleRule.value}'`
-              : "true";
-
-            let inputNode = "";
-            const commonProps = `placeholder="${comp.props.placeholder || ""}"`;
-
-            switch (comp.type) {
-              case "input":
-                inputNode = `<Input ${commonProps} />`;
-                break;
-              case "textarea":
-                inputNode = `<Input.TextArea ${commonProps} rows={4} />`;
-                break;
-              case "select":
-                inputNode = `<Select ${commonProps} options={${JSON.stringify(comp.props.options)}} />`;
-                break;
-              case "radio":
-                inputNode = `<Radio.Group options={${JSON.stringify(comp.props.options)}} />`;
-                break;
-              case "checkbox":
-                inputNode = `<Checkbox.Group options={${JSON.stringify(comp.props.options)}} />`;
-                break;
-              case "rate":
-                inputNode = `<Rate count={${comp.props.maxRate || 5}} />`;
-                break;
-              case "switch":
-                inputNode = `<Switch checkedChildren="${comp.props.activeText || "开"}" unCheckedChildren="${comp.props.inactiveText || "关"}" />`;
-                break;
-              case "date":
-                inputNode = `<DatePicker className="w-full" />`;
-                break;
-              case "cascader":
-                inputNode = `<Cascader options={${JSON.stringify(comp.props.options)}} placeholder="请选择" className="w-full" />`;
-                break;
-              case "button":
-                return `<Form.Item>
-          <Button type="primary" htmlType="submit" size="large" block>
-            ${comp.props.buttonText || "提交"}
-          </Button>
-        </Form.Item>`;
-              default:
-                return "";
-            }
-
-            // 包装 Form.Item
-            return `<Form.Item
-          noStyle
-          shouldUpdate={(prevValues, currentValues) => prevValues.${comp.visibleRule?.sourceId} !== currentValues.${comp.visibleRule?.sourceId}}
+        <Form 
+          form={form} 
+          layout="vertical" 
+          onFinish={onFinish}
+          autoComplete="off"
         >
-          {() => (
-            ${condition} ? (
-              <Form.Item
-                name="${comp.id}"
-                label="${comp.label}"
-                rules={[{ required: ${!!comp.required}, message: '请输入${comp.label}' }]}
-              >
-                ${inputNode}
-              </Form.Item>
-            ) : null
-          )}
-        </Form.Item>`;
-          })
-          .join("\n        ")}
-      </Form>
+          ${itemsJsx}
+
+          {/* 自动生成的提交按钮 */}
+          <Form.Item style={{ marginTop: 40, marginBottom: 0 }}>
+            <Button type="primary" htmlType="submit" block size="large" style={{ height: 48, borderRadius: 8, fontWeight: 600, fontSize: 16 }}>
+              提交表单
+            </Button>
+          </Form.Item>
+        </Form>
+      </div>
     </div>
   );
-}
-`;
+};
+
+export default App;`;
   };
 
+  const activeCode = activeTab === "json" ? jsonSchema : generateReactCode();
+
   const handleCopy = () => {
-    const textToCopy = activeTab === "json" ? jsonSchema : generateReactCode();
-    navigator.clipboard.writeText(textToCopy);
+    navigator.clipboard.writeText(activeCode);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+      <div className="bg-white w-full max-w-4xl h-[85vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200 animate-in zoom-in-95 duration-300">
         {/* 头部 */}
-        <header className="px-6 py-4 border-b flex items-center justify-between bg-gray-50/50">
-          <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-            <Code2 className="w-5 h-5 text-brand" /> 导出产物
-          </h2>
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-brand/10 rounded-lg">
+              <Code2 className="w-5 h-5 text-brand" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-gray-800">导出代码</h3>
+            </div>
+          </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-gray-600"
           >
             <X className="w-5 h-5" />
           </button>
-        </header>
+        </div>
 
-        {/* 内容区 */}
-        <div className="flex h-[650px]">
-          {/* 左侧侧边栏切换 Tab */}
-          <div className="w-52 border-r bg-gray-50 flex flex-col p-3 gap-2">
+        <div className="flex-1 flex overflow-hidden">
+          {/* 左侧侧边栏切换 */}
+          <div className="w-48 border-r border-gray-100 bg-gray-50/50 p-4 flex flex-col gap-2 shrink-0">
             <button
               onClick={() => setActiveTab("json")}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${activeTab === "json" ? "bg-white text-brand shadow-sm border border-gray-200" : "text-gray-600 hover:bg-gray-200"}`}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === "json" ? "bg-white text-brand shadow-sm border border-gray-200" : "text-gray-600 hover:bg-gray-200"}`}
             >
-              <FileJson className="w-4 h-4" /> JSON Schema
+              <FileJson className="w-4 h-4" /> JSON 配置
             </button>
             <button
               onClick={() => setActiveTab("react")}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${activeTab === "react" ? "bg-white text-brand shadow-sm border border-gray-200" : "text-gray-600 hover:bg-gray-200"}`}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === "react" ? "bg-white text-brand shadow-sm border border-gray-200" : "text-gray-600 hover:bg-gray-200"}`}
             >
               <Code2 className="w-4 h-4" /> React 源码
             </button>
@@ -193,7 +180,7 @@ export default function GeneratedForm() {
           <div className="flex-1 flex flex-col relative bg-[#1E1E1E] min-h-0 min-w-0">
             <div className="absolute top-4 right-6 flex items-center gap-3 z-10">
               <span className="text-[10px] text-gray-500 font-mono uppercase tracking-widest">
-                TSX / JSON
+                {activeTab.toUpperCase()}
               </span>
               <button
                 onClick={handleCopy}
@@ -209,10 +196,8 @@ export default function GeneratedForm() {
             </div>
 
             <div className="flex-1 overflow-auto p-6 pt-16 w-full custom-scrollbar">
-              <pre className="text-[13px] font-mono text-gray-300 leading-relaxed">
-                <code>
-                  {activeTab === "json" ? jsonSchema : generateReactCode()}
-                </code>
+              <pre className="text-sm font-mono text-gray-300 leading-relaxed whitespace-pre-wrap break-all">
+                {activeCode}
               </pre>
             </div>
           </div>

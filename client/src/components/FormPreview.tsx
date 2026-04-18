@@ -41,7 +41,7 @@ export const FormPreview: React.FC<Props> = ({
     return formData[comp.visibleRule.sourceId] === comp.visibleRule.value;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SubmitEvent) => {
     e.preventDefault();
     const newErrors: Record<string, string> = {};
     let firstErrorId: string | null = null;
@@ -61,7 +61,7 @@ export const FormPreview: React.FC<Props> = ({
 
       if (
         comp.required &&
-        comp.type !== "button" &&
+        // comp.type !== "button" &&
         comp.type !== "switch" &&
         isEmpty
       ) {
@@ -77,7 +77,7 @@ export const FormPreview: React.FC<Props> = ({
             newErrors[safeId] = comp.validation.message || "格式不正确";
             if (!firstErrorId) firstErrorId = safeId;
           }
-        } catch (err) { }
+        } catch (err) {}
       }
     });
 
@@ -178,7 +178,7 @@ export const FormPreview: React.FC<Props> = ({
               // 为流式过程中的残缺对象提供临时 key
               const safeKey = comp.id || `streaming-comp-${index}`;
 
-              if (comp.type === "button") {
+              /* if (comp.type === "button") {
                 return (
                   <div
                     key={safeKey}
@@ -192,7 +192,7 @@ export const FormPreview: React.FC<Props> = ({
                     </button>
                   </div>
                 );
-              }
+              } */
 
               const hasError = !!errors[safeKey];
 
@@ -244,6 +244,16 @@ export const FormPreview: React.FC<Props> = ({
               );
             })}
           </div>
+          {components.length > 0 && !isEmbedded && (
+            <div className="mt-8 pt-6 border-t border-gray-100">
+              <button
+                type="submit"
+                className="w-full bg-indigo-600 text-white py-3.5 rounded-xl font-bold text-[16px] shadow-lg shadow-indigo-600/30 hover:bg-indigo-600/90 hover:shadow-indigo-600/30 transition-all active:scale-[0.99]"
+              >
+                提交表单
+              </button>
+            </div>
+          )}
         </form>
       </div>
     </div>

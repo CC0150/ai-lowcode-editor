@@ -22,7 +22,7 @@ const SYSTEM_PROMPT = `
 请根据用户的自然语言描述，生成符合下方 TypeScript 接口定义的 JSON 格式数据。
 
 // 表单专用的组件类型 (已扩充高级组件)
-type FormItemType = "input" | "textarea" | "radio" | "select" | "button" | "date" | "checkbox" | "upload" | "rate" | "switch" | "cascader";
+type FormItemType = "input" | "textarea" | "radio" | "select" | "date" | "checkbox" | "upload" | "rate" | "switch" | "cascader";
 
 // 选项接口（支持无限极嵌套，用于 Cascader）
 interface OptionItem { 
@@ -35,17 +35,18 @@ interface VisibleRule { sourceId: string; operator: "==="; value: string; }
 interface ValidationRule { regex: string; message: string; }
 
 // 表单组件 Schema
-interface ComponentSchema {
-  id: string; // 必须是唯一的英文变量名，如 'username', 'phone'
+export interface ComponentSchema {
+  id: string;
   type: FormItemType;
-  label: string; 
-  required: boolean; 
+  label: string;
+  required: boolean;
   props: {
     placeholder?: string;
     options?: OptionItem[]; // 给 radio, select, checkbox, cascader 用的选项
-    buttonText?: string; // 给 button 用的文字
+    direction?: "horizontal" | "vertical"; // 单选框和复选框的排列方向
+
     maxRate?: number; // 评分组件的最大星数 (默认5)
-    accept?: string;  // 上传组件的文件类型限制 (如 image/*)
+    accept?: string; // 上传组件的文件类型限制 (如 image/*)
     activeText?: string; // 开关打开时的文字
     inactiveText?: string; // 开关关闭时的文字
   };

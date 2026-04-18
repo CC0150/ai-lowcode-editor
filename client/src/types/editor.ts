@@ -5,7 +5,6 @@ export type FormItemType =
   | "textarea"
   | "radio"
   | "select"
-  | "button"
   | "date"
   | "checkbox"
   | "upload"
@@ -16,9 +15,9 @@ export type FormItemType =
 // AI 对表单结构的修改补丁指令
 export interface FormPatchAction {
   action: "add" | "update" | "remove";
-  targetId?: string;             // 目标组件的 id（用于定位插入位置、修改或删除）
+  targetId?: string; // 目标组件的 id（用于定位插入位置、修改或删除）
   position?: "before" | "after"; // 对于 'add' 操作，指定插入到目标的前面还是后面
-  component?: ComponentSchema;   // 对于 'add' 操作，提供新的组件结构
+  component?: ComponentSchema; // 对于 'add' 操作，提供新的组件结构
   updates?: Partial<ComponentSchema>; // 对于 'update' 操作，提供要修改的属性
 }
 
@@ -54,11 +53,10 @@ export interface ComponentSchema {
   props: {
     placeholder?: string;
     options?: OptionItem[]; // 给 radio, select, checkbox, cascader 用的选项
-    direction?: 'horizontal' | 'vertical'; // 单选框和复选框的排列方向
-    buttonText?: string;
-    //  高级组件特有 Props  */
+    direction?: "horizontal" | "vertical"; // 单选框和复选框的排列方向
+
     maxRate?: number; // 评分组件的最大星数 (默认5)
-    accept?: string;  // 上传组件的文件类型限制 (如 image/*)
+    accept?: string; // 上传组件的文件类型限制 (如 image/*)
     activeText?: string; // 开关打开时的文字
     inactiveText?: string; // 开关关闭时的文字
   };
@@ -68,8 +66,8 @@ export interface ComponentSchema {
 
 // 补丁历史记录接口
 export interface HistoryPatch {
-  forward: Patch[];  // 正向补丁（用于重做）
-  inverse: Patch[];  // 反向补丁（用于撤销）
+  forward: Patch[]; // 正向补丁（用于重做）
+  inverse: Patch[]; // 反向补丁（用于撤销）
 }
 
 export interface EditorStore {
