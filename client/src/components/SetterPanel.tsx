@@ -49,7 +49,7 @@ export const SetterPanel = () => {
     if (!selectedComponent) return;
     setIsOptionsAILoading(true);
     try {
-      const res = await fetch("http://localhost:3001/api/modify-component", {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/modify-component`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -93,7 +93,7 @@ export const SetterPanel = () => {
     if (!copilotPrompt.trim() || !selectedComponent) return;
     setIsCopilotLoading(true);
     try {
-      const res = await fetch("http://localhost:3001/api/modify-component", {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/modify-component`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -125,7 +125,7 @@ export const SetterPanel = () => {
     if (!regexPrompt.trim() || !selectedComponent) return;
     setIsRegexLoading(true);
     try {
-      const res = await fetch("http://localhost:3001/api/generate-regex", {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/generate-regex`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt: regexPrompt }),

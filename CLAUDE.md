@@ -34,8 +34,10 @@
 ## ⚠️ 开发注意事项
 - **唯一标识**: 新增组件必须使用 `crypto.randomUUID()`
 - **状态修改**: 所有对 `components` 的修改必须包裹在 `applyChange` 中，以确保历史栈同步
-- **撤销/重做**: 快捷键为 `Ctrl+Z` 和 `Ctrl+Y` (或 `Shift+Ctrl+Z`)
-- **AI 配置**: 必须在后端 `.env` 中配置 `AI_API_KEY` 和 `AI_BASE_URL`
+- **AI 接口调用**: 前端调用后端接口必须使用 `import.meta.env.VITE_API_BASE_URL` 读取环境变量，严禁硬编码 `http://localhost:3001`。
+- **环境配置**: 
+  - 前端：在 `client/.env` 中配置 `VITE_API_BASE_URL`
+  - 后端：在 `server/.env` 中配置 `AI_API_KEY` 和 `AI_BASE_URL`
 
 ## 🌐 语言偏好
 - 始终使用 **简体中文** 回复所有内容

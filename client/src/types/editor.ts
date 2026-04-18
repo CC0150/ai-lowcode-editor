@@ -29,7 +29,7 @@ export interface OptionItem {
   /** 选项值 */
   value: string;
   /** 子选项 */
-   children?: OptionItem[]; // 用于级联选择器的子节点
+  children?: OptionItem[]; // 用于级联选择器的子节点
 }
 
 // 联动规则接口
@@ -77,6 +77,7 @@ export interface EditorStore {
   future: HistoryPatch[];
   components: ComponentSchema[];
   selectedId: string | null;
+  canvasTitle: string;
 
   addComponent: (type: FormItemType) => void;
   selectComponent: (id: string | null) => void;
@@ -84,9 +85,11 @@ export interface EditorStore {
   updateProps: (id: string, props: any) => void;
   reorderComponents: (oldIndex: number, newIndex: number) => void;
   deleteComponent: (id: string) => void;
+  clearCanvas: () => void;
 
   undo: () => void;
   redo: () => void;
-  applyAIGenerated: (newComponents: ComponentSchema[]) => void;
+  applyAIGenerated: (newComponents: ComponentSchema[], title?: string) => void;
   applyAIPatches: (patches: FormPatchAction[]) => void;
+  updateTitle: (title: string) => void;
 }

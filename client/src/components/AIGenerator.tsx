@@ -7,17 +7,23 @@ import { Sparkles, Command, CornerDownLeft, X } from "lucide-react";
 import { message } from "antd";
 import { jsonrepair } from "jsonrepair";
 import { validateAndCleanComponents } from "../utils/validation";
+import { produce } from "immer";
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001";
 
 /**
- * 解析 JSON 字符串，尝试修复并返回组件数组
+ * 解析 JSON 字符串，尝试修复并返回组件数组和标题
  */
 const parsePartialJSON = (jsonString: string) => {
   try {
     const repaired = jsonrepair(jsonString);
     const parsed = JSON.parse(repaired);
-    return parsed.components;
+    return {
+      components: parsed.components || [],
+      title: parsed.title || "",
+    };
   } catch (e) {
-    // 如果 jsonrepair 都修不好，说明数据实在太少了（比如只有半个大括号），耐心等待下一帧
+    // 如果 jsonrepair 都修不好，说明数据实在太少了，耐心等待下一帧
     return null;
   }
 };
@@ -29,15 +35,19 @@ export function AIGenerator() {
   const [isOpen, setIsOpen] = useState(false);
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
-  const [previewData, setPreviewData] = useState<ComponentSchema[] | null>(null);
 
-  // 获取 Store 中的状态与方法
-  const currentComponents = useEditorStore((state) => state.components);
+  // 沙箱预览状态
+  const [previewData, setPreviewData] = useState<ComponentSchema[] | null>(null);
+  const [previewTitle, setPreviewTitle] = useState<string>("");
+
+  // 获取 Store 中的方法，全量覆盖到画布
   const applyAIGenerated = useEditorStore((state) => state.applyAIGenerated);
-  const applyAIPatches = useEditorStore((state) => state.applyAIPatches); // 新增：局部补丁方法
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // 根据当前预览数据是否存在，判断是否处于 "追加修改" 模式
+  const isPatchMode = previewData !== null && previewData.length > 0;
 
   /**
    * 关闭弹窗
@@ -46,6 +56,7 @@ export function AIGenerator() {
     setIsOpen(false);
     setPrompt("");
     setPreviewData(null);
+    setPreviewTitle(""); // 清空标题
     setLoading(false);
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -79,25 +90,50 @@ export function AIGenerator() {
   const handleGenerate = async () => {
     if (!prompt.trim() || loading) return;
     setLoading(true);
-    setPreviewData([]);
 
-    // 判断当前画布是否有组件
-    const isPatchMode = currentComponents.length > 0;
-
-    if (isPatchMode) {
-      // 画布不为空，执行局部 Patch 逻辑
+    if (isPatchMode && previewData) {
+      // 1. 弹窗内已有预览，执行局部 Patch 逻辑，追加/修改预览效果
       try {
-        const response = await fetch("http://localhost:3001/api/patch-form", {
+        const response = await fetch(`${API_BASE_URL}/api/patch-form`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt, currentComponents }),
+          // 将当前的预览数据传给后端进行分析
+          body: JSON.stringify({ prompt, currentComponents: previewData }),
         });
         const result = await response.json();
 
         if (result.success && result.data?.patches) {
-          applyAIPatches(result.data.patches);
-          message.success("已根据您的需求智能修改画布！");
-          handleCloseModal(); 
+          // 使用 immer 纯本地修改 previewData 的状态，不影响全局画布
+          setPreviewData((prev) => {
+            if (!prev) return prev;
+            return produce(prev, (draft) => {
+              result.data.patches.forEach((patch: any) => {
+                if (patch.action === "remove" && patch.targetId) {
+                  const index = draft.findIndex((c) => c.id === patch.targetId);
+                  if (index !== -1) draft.splice(index, 1);
+                } else if (patch.action === "update" && patch.targetId && patch.updates) {
+                  const component = draft.find((c) => c.id === patch.targetId);
+                  if (component) {
+                    Object.assign(component, patch.updates);
+                  }
+                } else if (patch.action === "add" && patch.component) {
+                  const newComponent = { ...patch.component, id: patch.component.id || crypto.randomUUID() };
+                  if (patch.targetId) {
+                    const index = draft.findIndex((c) => c.id === patch.targetId);
+                    if (index !== -1) {
+                      const insertIndex = patch.position === "before" ? index : index + 1;
+                      draft.splice(insertIndex, 0, newComponent);
+                    } else {
+                      draft.push(newComponent);
+                    }
+                  } else {
+                    draft.push(newComponent);
+                  }
+                }
+              });
+            });
+          });
+          setPrompt(""); // 清空输入框，方便用户继续提出下一次修改
         } else {
           throw new Error(result.error || "生成补丁失败");
         }
@@ -108,12 +144,14 @@ export function AIGenerator() {
         setLoading(false);
       }
     } else {
-      // 画布为空，执行原有的 SSE 流式全量生成逻辑
+      // 2. 弹窗内为空，执行原有的 SSE 流式全量生成逻辑
+      setPreviewData([]); // 清空可能残留的数据
+      setPreviewTitle("");
       abortControllerRef.current = new AbortController();
       let accumulatedText = "";
 
       try {
-        const response = await fetch("http://localhost:3001/api/generate-form", {
+        const response = await fetch(`${API_BASE_URL}/api/generate-form`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ prompt }),
@@ -145,15 +183,20 @@ export function AIGenerator() {
                 }
                 if (parsedData.content) {
                   accumulatedText += parsedData.content;
-                  const partialComponents = parsePartialJSON(accumulatedText);
-                  if (partialComponents && partialComponents.length > 0) {
-                    setPreviewData(partialComponents);
+                  // 解析组件与标题
+                  const result = parsePartialJSON(accumulatedText);
+                  if (result && result.components.length > 0) {
+                    setPreviewData(result.components);
+                    if (result.title) {
+                      setPreviewTitle(result.title);
+                    }
                   }
                 }
               } catch (e) { }
             }
           }
         }
+        setPrompt("");
       } catch (error: any) {
         if (error.name === "AbortError") {
           console.log("AI 生成已被中止");
@@ -168,18 +211,17 @@ export function AIGenerator() {
   };
 
   /**
-   * 确认 AI 生成的组件 (仅全量生成模式使用)
+   * 确认 AI 生成的组件，覆盖到画布并更新标题
    */
   const handleConfirm = () => {
     if (previewData) {
-      // 进主画布前，用 Zod 强力洗一遍数据，剥离脏属性，补充缺省值
+      // 用 Zod 洗一遍数据，剥离脏属性，补充缺省值
       const safeData = validateAndCleanComponents(previewData);
-      applyAIGenerated(safeData);
+      // 调用 store，同步导入组件和标题
+      applyAIGenerated(safeData, previewTitle || "未命名表单");
       handleCloseModal();
     }
   };
-
-  const isPatchMode = currentComponents.length > 0;
 
   /**
    * 渲染弹窗内容
@@ -198,10 +240,10 @@ export function AIGenerator() {
           <textarea
             ref={inputRef}
             className="flex-1 bg-transparent text-xl text-slate-800 placeholder-slate-300 outline-none resize-none font-medium leading-relaxed"
-            rows={prompt.length > 30 ? 2 : 1}
+            rows={prompt.length > 30 ? 3 : 1}
             placeholder={
               isPatchMode
-                ? "例如：在姓名下面加一个邮箱字段..."
+                ? "继续优化表单，例如：在姓名下面加一个邮箱字段..."
                 : "例如：创建一个面试登记表，包含姓名、手机号..."
             }
             value={prompt}
@@ -224,66 +266,59 @@ export function AIGenerator() {
           <>
             <div className="h-[1px] w-full bg-slate-100" />
             <div className="flex-1 overflow-y-auto bg-slate-50/80 p-6 custom-scrollbar relative max-h-[60vh]">
+              {previewData && previewData.length > 0 ? (
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden relative min-h-[200px]">
 
-              {/* 局部修改时的 Loading 态 */}
-              {isPatchMode && loading ? (
+                  {/* 在沙箱预览顶部展示 AI 生成的标题 */}
+                  {previewTitle && (
+                    <div className="bg-slate-50 border-b border-slate-100 px-4 py-3 text-center">
+                      <h3 className="text-lg font-bold text-slate-700">{previewTitle}</h3>
+                    </div>
+                  )}
+
+                  <FormPreview overrideComponents={previewData} isEmbedded={true} />
+
+                  {loading && (
+                    <div className="absolute bottom-4 right-4 bg-white/95 backdrop-blur shadow-md px-3 py-1.5 rounded-full flex items-center gap-2 border border-indigo-50 animate-in fade-in zoom-in slide-in-from-bottom-2">
+                      <div className="w-3 h-3 border-2 border-indigo-200 rounded-full animate-spin border-t-indigo-500"></div>
+                      <span className="text-xs text-indigo-600 font-medium">
+                        {isPatchMode ? "AI 正在修改..." : "AI 正在书写..."}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ) : loading ? (
                 <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-4 py-12">
                   <div className="relative">
                     <div className="w-12 h-12 border-4 border-indigo-100 rounded-full animate-spin border-t-indigo-500"></div>
                     <Sparkles className="w-5 h-5 text-indigo-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
                   </div>
-                  <p className="text-sm font-medium animate-pulse">正在分析当前画布并应用修改...</p>
+                  <p className="text-sm font-medium animate-pulse">正在理解您的需求...</p>
                 </div>
-              ) :
-                /* 流式全量生成时的预览态 */
-                previewData && previewData.length > 0 ? (
-                  <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden relative min-h-[200px]">
-                    <FormPreview overrideComponents={previewData} isEmbedded={true} />
-
-                    {loading && (
-                      <div className="absolute bottom-4 right-4 bg-white/95 backdrop-blur shadow-md px-3 py-1.5 rounded-full flex items-center gap-2 border border-indigo-50 animate-in fade-in zoom-in slide-in-from-bottom-2">
-                        <div className="w-3 h-3 border-2 border-indigo-200 rounded-full animate-spin border-t-indigo-500"></div>
-                        <span className="text-xs text-indigo-600 font-medium">AI 正在书写...</span>
-                      </div>
-                    )}
-                  </div>
-                ) :
-                  /* 流式全量生成初期的 Loading 态 */
-                  !isPatchMode && loading ? (
-                    <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-4 py-12">
-                      <div className="relative">
-                        <div className="w-12 h-12 border-4 border-indigo-100 rounded-full animate-spin border-t-indigo-500"></div>
-                        <Sparkles className="w-5 h-5 text-indigo-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-                      </div>
-                      <p className="text-sm font-medium animate-pulse">正在理解您的需求...</p>
-                    </div>
-                  ) : null}
+              ) : null}
             </div>
 
-            {/* 仅在非局部修改模式，或者预览已存在的情况下展示底部操作栏 */}
-            {(!isPatchMode || previewData) && (
-              <div className="px-6 py-4 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                <div className="flex items-center gap-5">
-                  <span className="flex items-center gap-1.5">
-                    <kbd className="bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200 font-mono shadow-sm">ESC</kbd>
-                    取消并清空
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <kbd className="bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200 font-mono shadow-sm">↵</kbd>
-                    生成
-                  </span>
-                </div>
-
-                {previewData && !loading && (
-                  <button
-                    onClick={handleConfirm}
-                    className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg font-medium transition-colors shadow-md active:scale-95"
-                  >
-                    确认导入 <CornerDownLeft className="w-4 h-4" />
-                  </button>
-                )}
+            <div className="px-6 py-4 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+              <div className="flex items-center gap-5">
+                <span className="flex items-center gap-1.5">
+                  <kbd className="bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200 font-mono shadow-sm">ESC</kbd>
+                  取消并清空
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <kbd className="bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200 font-mono shadow-sm">↵</kbd>
+                  生成 / 追加修改
+                </span>
               </div>
-            )}
+
+              {previewData && !loading && (
+                <button
+                  onClick={handleConfirm}
+                  className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg font-medium transition-colors shadow-md active:scale-95"
+                >
+                  覆盖到画布 <CornerDownLeft className="w-4 h-4" />
+                </button>
+              )}
+            </div>
           </>
         )}
       </div>
@@ -299,7 +334,7 @@ export function AIGenerator() {
         <div className="flex items-center gap-2.5">
           <Sparkles className="w-4 h-4 text-indigo-500 group-hover:scale-110 transition-transform" />
           <span className="text-slate-400 group-hover:text-slate-600 transition-colors">
-            让 AI 帮你生成表单...
+            让 AI 帮你生成新表单...
           </span>
         </div>
         <div className="flex items-center gap-1 text-[10px] font-mono font-medium text-slate-400 bg-white px-1.5 py-0.5 rounded shadow-sm border border-slate-200">

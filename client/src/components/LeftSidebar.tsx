@@ -2,8 +2,9 @@ import React, { useState } from "react";
 import { useEditorStore } from "../store/useEditorStore";
 import {
   Type, AlignLeft, CheckCircle2, CheckSquare, List, Calendar,
-  UploadCloud, Star, ToggleLeft, ListTree, MousePointer2, ChevronDown
+  UploadCloud, Star, ToggleLeft, ListTree, MousePointer2, ChevronDown, Trash2
 } from "lucide-react";
+import { Popconfirm } from "antd";
 
 // 内部封装：左侧物料区专用的折叠面板
 const MaterialSection = ({ title, children, defaultOpen = true }: { title: string, children: React.ReactNode, defaultOpen?: boolean }) => {
@@ -28,12 +29,12 @@ interface LeftSidebarProps {
 }
 
 export const LeftSidebar: React.FC<LeftSidebarProps> = ({ isOpen }) => {
-  const addComponent = useEditorStore(state => state.addComponent);
+  const { addComponent, components, clearCanvas } = useEditorStore();
 
   return (
     <aside className={`transition-all duration-300 ease-in-out border-r border-gray-200 bg-white flex flex-col overflow-hidden ${isOpen ? "w-64 opacity-100" : "w-0 border-r-0 opacity-0"}`}>
-      <div className="w-64 p-4 overflow-y-auto custom-scrollbar flex-1 pb-20">
-        
+      <div className="w-64 p-4 overflow-y-auto custom-scrollbar flex-1 relative">
+
         <MaterialSection title="基础组件" defaultOpen={true}>
           <div className="grid grid-cols-2 gap-3">
             {[
@@ -70,13 +71,34 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({ isOpen }) => {
 
         <MaterialSection title="系统组件" defaultOpen={true}>
           <div className="grid grid-cols-2 gap-3">
-             <button onClick={() => addComponent("button")} className="flex flex-col items-center justify-center p-3 border border-gray-200 rounded-lg hover:border-brand hover:text-brand bg-gray-50 hover:bg-white transition-all group shadow-sm">
-                <MousePointer2 className="w-5 h-5 mb-2 text-gray-500 group-hover:text-brand" />
-                <span className="text-xs font-medium text-gray-600 group-hover:text-brand">提交按钮</span>
-              </button>
+            <button onClick={() => addComponent("button")} className="flex flex-col items-center justify-center p-3 border border-gray-200 rounded-lg hover:border-brand hover:text-brand bg-gray-50 hover:bg-white transition-all group shadow-sm">
+              <MousePointer2 className="w-5 h-5 mb-2 text-gray-500 group-hover:text-brand" />
+              <span className="text-xs font-medium text-gray-600 group-hover:text-brand">提交按钮</span>
+            </button>
           </div>
         </MaterialSection>
-        
+
+        {/* 底部悬浮操作区：清空画布 */}
+        <div className="absolute left-0 right-0 bottom-0 w-56 mx-auto p-4 border-t border-gray-100 bg-gray-50/50 shrink-0">
+          <Popconfirm
+            title="清空画布"
+            description="确定要清空所有组件吗？(可使用 Ctrl+Z 撤销)"
+            onConfirm={() => clearCanvas()}
+            okText="确认清空"
+            cancelText="取消"
+            okButtonProps={{ danger: true }}
+            placement="top"
+          >
+            <button
+              disabled={components.length === 0}
+              className="w-full flex items-center justify-center gap-2 p-2.5 rounded-lg border border-red-200 text-red-500 bg-red-50 hover:bg-red-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm"
+            >
+              <Trash2 className="w-4 h-4" />
+              清空画布
+            </button>
+          </Popconfirm>
+        </div>
+
       </div>
     </aside>
   );

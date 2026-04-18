@@ -16,7 +16,7 @@ export const FormPreview: React.FC<Props> = ({
   overrideComponents,
   isEmbedded = false,
 }) => {
-  const { components: storeComponents } = useEditorStore();
+  const { components: storeComponents, canvasTitle } = useEditorStore();
   const components = overrideComponents || storeComponents;
 
   const [formData, setFormData] = useState<Record<string, any>>({});
@@ -157,7 +157,7 @@ export const FormPreview: React.FC<Props> = ({
           {!isEmbedded && (
             <div className="border-b-2 border-gray-100 pb-5 mb-8">
               <h1 className="text-3xl font-extrabold text-center text-gray-800 tracking-tight">
-                表单预览
+                {canvasTitle}
               </h1>
               <p className="text-center text-gray-400 text-sm mt-2">
                 真实校验环境

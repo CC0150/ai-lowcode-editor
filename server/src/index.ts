@@ -53,8 +53,11 @@ interface ComponentSchema {
 }
 
 请严格遵守上述接口类型。
-必须输出一个 JSON 对象，包含一个名为 "components" 的数组，数组中包含生成的表单项。
-例如：{ "components": [ { "id": "name", "type": "input", "label": "姓名", "required": true, "props": { "placeholder": "请输入姓名" } } ] }
+必须输出一个 JSON 对象，包含：
+1. "title": 字符串类型，根据表单用途生成的标题（如：员工入职登记表、产品反馈收集等）。
+2. "components": 数组类型，包含生成的表单项。
+
+例如：{ "title": "姓名收集", "components": [ ... ] }
 不要输出任何解释性文字或 Markdown 标记。
 `;
 // 局部组件 AI 修改接口

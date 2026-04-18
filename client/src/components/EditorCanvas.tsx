@@ -16,7 +16,7 @@ import {
 } from "@dnd-kit/sortable";
 
 export const EditorCanvas: React.FC = () => {
-  const { components, selectedId, selectComponent, reorderComponents } =
+  const { components, selectedId, selectComponent, reorderComponents, canvasTitle, updateTitle } =
     useEditorStore();
     /** 组件拖动传感器 */
   const sensors = useSensors(
@@ -42,9 +42,12 @@ export const EditorCanvas: React.FC = () => {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="border-b-2 border-gray-100 pb-4 mb-8">
-          <h1 className="text-2xl font-bold text-center text-gray-800">
-            用户调研问卷
-          </h1>
+          <input
+          value={canvasTitle}
+          onChange={(e) => updateTitle(e.target.value)}
+          className="text-2xl font-bold text-center text-gray-800 w-full border-none focus:ring-0 bg-transparent hover:bg-gray-50 rounded transition-colors"
+          placeholder="请输入表单标题"
+        />
           <p className="text-gray-500 text-sm text-center mt-2">
             请如实填写以下信息
           </p>
