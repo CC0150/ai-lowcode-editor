@@ -9,7 +9,6 @@ import {
   Upload,
   Star,
   ToggleLeft,
-  MousePointer2,
   Sliders,
   Sparkles,
   Wand2,

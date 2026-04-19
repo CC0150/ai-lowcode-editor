@@ -11,7 +11,6 @@ import {
   Star,
   ToggleLeft,
   ListTree,
-  MousePointer2,
   ChevronDown,
   Trash2,
 } from "lucide-react";
