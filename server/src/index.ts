@@ -3,6 +3,10 @@ import cors from "cors";
 import dotenv from "dotenv";
 import OpenAI from "openai";
 import type { Request, Response } from "express";
+import crypto from 'crypto';
+
+// 临时内存存储（后续可替换为 MySQL/Supabase）
+const formStore = new Map<string, any>();
 
 dotenv.config();
 
@@ -62,8 +66,36 @@ export interface ComponentSchema {
 例如：{ "title": "姓名收集", "components": [ ... ] }
 不要输出任何解释性文字或 Markdown 标记。
 `;
+
+// 1. 发布表单（保存配置）
+app.post("/api/forms", (req: Request, res: Response) => {
+  try {
+    const { title, components } = req.body;
+    // 生成唯一短 ID，例如：f8a2b1c
+    const formId = crypto.randomBytes(4).toString("hex");
+
+    formStore.set(formId, { title, components, createdAt: new Date() });
+
+    res.json({ success: true, data: { formId } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "发布失败" });
+  }
+});
+
+// 2. 获取表单（用于 C 端渲染）
+app.get("/api/forms/:formId", (req: Request, res: Response) => {
+  const { formId } = req.params;
+  const formData = formStore.get(formId as string);
+
+  if (formData) {
+    res.json({ success: true, data: formData });
+  } else {
+    res.status(404).json({ success: false, message: "表单不存在或已失效" });
+  }
+});
+
 // 局部组件 AI 修改接口
-app.post("/api/modify-component", async (req: Request, res: Response) => {
+app.post("/modify-component", async (req: Request, res: Response) => {
   const { component, prompt } = req.body;
   if (!component || !prompt) return res.status(400).json({ error: "参数缺失" });
 
@@ -93,7 +125,7 @@ ${JSON.stringify(component)}
 });
 
 // AI 智能正则校验接口
-app.post("/api/generate-regex", async (req: Request, res: Response) => {
+app.post("/generate-regex", async (req: Request, res: Response) => {
   const { prompt } = req.body;
   if (!prompt) return res.status(400).json({ error: "参数缺失" });
 
@@ -121,7 +153,7 @@ app.post("/api/generate-regex", async (req: Request, res: Response) => {
 });
 
 // AI 表单生成接口
-app.post("/api/generate-form", async (req: Request, res: Response) => {
+app.post("/generate-form", async (req: Request, res: Response) => {
   const { prompt } = req.body;
 
   if (!prompt) {
@@ -167,7 +199,7 @@ app.post("/api/generate-form", async (req: Request, res: Response) => {
 });
 
 // AI 表单局部增删改 (Patch) 接口
-app.post("/api/patch-form", async (req: Request, res: Response) => {
+app.post("/patch-form", async (req: Request, res: Response) => {
   const { prompt, currentComponents } = req.body;
 
   if (!prompt) return res.status(400).json({ error: "参数缺失" });

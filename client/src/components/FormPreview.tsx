@@ -49,7 +49,6 @@ export const FormPreview: React.FC<Props> = ({
     components.forEach((comp, index) => {
       if (!checkIsVisible(comp)) return;
 
-      // 使用 safeKey 保持与渲染时的 ID 读取一致
       const safeId = comp.id || `streaming-comp-${index}`;
       const val = formData[safeId];
 
@@ -61,7 +60,6 @@ export const FormPreview: React.FC<Props> = ({
 
       if (
         comp.required &&
-        // comp.type !== "button" &&
         comp.type !== "switch" &&
         isEmpty
       ) {
@@ -97,9 +95,9 @@ export const FormPreview: React.FC<Props> = ({
   if (isSubmitted) {
     return (
       <div
-        className={`${isEmbedded ? "w-full h-full p-12" : "flex-1 h-full absolute inset-0 z-50 bg-gray-50"} flex flex-col items-center justify-center`}
+        className={`${isEmbedded ? "w-full h-full p-6 md:p-12" : "flex-1 h-full absolute inset-0 z-50 bg-gray-50"} flex flex-col items-center justify-center`}
       >
-        <div className="bg-white p-8 rounded-2xl shadow-sm flex flex-col items-center max-w-sm w-full text-center border border-gray-100">
+        <div className="bg-white p-8 md:p-10 rounded-2xl md:shadow-sm flex flex-col items-center max-w-sm w-full text-center border-transparent md:border-gray-100">
           <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mb-4">
             <CheckCircle2 className="w-10 h-10 text-green-500" />
           </div>
@@ -107,13 +105,13 @@ export const FormPreview: React.FC<Props> = ({
           <p className="text-gray-500 text-sm mt-2">
             {isEmbedded
               ? "校验通过，逻辑运行正常！"
-              : "控制台已打印收集到的受控数据。"}
+              : "您的数据已成功记录。"}
           </p>
           <button
             onClick={isEmbedded ? () => setIsSubmitted(false) : onBack}
-            className="mt-8 px-8 py-2.5 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand/90 transition-colors shadow-sm w-full"
+            className="mt-8 px-8 py-3 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm w-full"
           >
-            {isEmbedded ? "返回重新试填" : "返回编辑器"}
+            {isEmbedded ? "返回重新试填" : "返回"}
           </button>
         </div>
       </div>
@@ -125,16 +123,17 @@ export const FormPreview: React.FC<Props> = ({
       className={
         isEmbedded
           ? "w-full h-full relative"
-          : "flex-1 bg-gray-100 overflow-auto flex flex-col h-full w-full absolute inset-0 z-50"
+          : "flex-1 bg-gray-50 md:bg-gray-100 overflow-auto flex flex-col h-full w-full absolute inset-0 z-50"
       }
     >
       {!isEmbedded && (
-        <header className="shrink-0 h-14 bg-white flex items-center px-6 sticky top-0 z-20 shadow-sm">
+        <header className="shrink-0 h-12 md:h-14 bg-white flex items-center px-4 md:px-6 sticky top-0 z-20 shadow-sm">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 text-gray-600 hover:text-brand transition-colors text-sm font-medium cursor-pointer"
+            className="flex items-center gap-1.5 md:gap-2 text-gray-600 hover:text-indigo-600 transition-colors text-sm font-medium cursor-pointer"
           >
-            <ArrowLeft className="w-4 h-4" /> 退出预览
+            <ArrowLeft className="w-4 h-4 md:w-5 md:h-5" />
+            <span className="md:inline">退出预览</span>
           </button>
         </header>
       )}
@@ -142,8 +141,8 @@ export const FormPreview: React.FC<Props> = ({
       <div
         className={
           isEmbedded
-            ? "p-6 flex justify-center pb-24"
-            : "flex-1 p-8 flex justify-center pb-32"
+            ? "p-4 md:p-6 flex justify-center pb-24"
+            : "flex-1 p-0 md:p-8 flex justify-center pb-32"
         }
       >
         <form
@@ -151,16 +150,16 @@ export const FormPreview: React.FC<Props> = ({
           className={
             isEmbedded
               ? "w-full max-w-2xl bg-white rounded-xl h-fit"
-              : "w-full max-w-2xl bg-white shadow-xl shadow-gray-200/50 rounded-2xl p-10 h-fit border border-gray-100"
+              : "w-full md:max-w-2xl bg-white md:shadow-xl md:shadow-gray-200/50 md:rounded-2xl p-5 md:p-10 h-fit border-transparent md:border-gray-100"
           }
         >
           {!isEmbedded && (
-            <div className="border-b-2 border-gray-100 pb-5 mb-8">
-              <h1 className="text-3xl font-extrabold text-center text-gray-800 tracking-tight">
+            <div className="border-b md:border-b-2 border-gray-100 pb-4 md:pb-5 mb-6 md:mb-8">
+              <h1 className="text-2xl md:text-3xl font-extrabold text-center text-gray-800 tracking-tight">
                 {canvasTitle}
               </h1>
-              <p className="text-center text-gray-400 text-sm mt-2">
-                真实校验环境
+              <p className="text-center text-gray-400 text-xs md:text-sm mt-1.5 md:mt-2">
+                请如实填写以下信息
               </p>
             </div>
           )}
@@ -171,16 +170,11 @@ export const FormPreview: React.FC<Props> = ({
             </div>
           )}
 
-          <div className="flex flex-col gap-7">
+          <div className="flex flex-col gap-6 md:gap-7">
             {components
-              // 1. 先映射出包含原始索引的对象，以便后续生成稳定的 safeKey
               .map((comp, originalIndex) => ({ comp, originalIndex }))
-              // 2. 过滤掉不满足显示条件的组件
               .filter(({ comp }) => checkIsVisible(comp))
-              // 3. 此时的 index 就是连续的可见序号
               .map(({ comp, originalIndex }, visibleIndex) => {
-
-                // 使用 originalIndex 保持与表单提交逻辑中的 safeKey 生成规则完全一致
                 const safeKey = comp.id || `streaming-comp-${originalIndex}`;
                 const hasError = !!errors[safeKey];
 
@@ -190,10 +184,10 @@ export const FormPreview: React.FC<Props> = ({
                     ref={(el) => {
                       fieldRefs.current[safeKey] = el;
                     }}
-                    className={`flex flex-col gap-2 p-4 -mx-4 rounded-xl transition-all duration-300`}
+                    className={`flex flex-col gap-2 p-1 md:p-4 md:-mx-4 rounded-xl transition-all duration-300`}
                   >
                     <label
-                      className={`text-[15px] font-semibold flex items-start gap-1 leading-snug ${hasError ? "text-red-600" : "text-gray-800"}`}
+                      className={`text-[15px] md:text-[16px] font-semibold flex items-start gap-1 leading-snug ${hasError ? "text-red-600" : "text-gray-800"}`}
                     >
                       <span className="text-gray-400 font-normal mr-1">
                         {visibleIndex + 1}.
@@ -233,10 +227,10 @@ export const FormPreview: React.FC<Props> = ({
               })}
           </div>
           {components.length > 0 && !isEmbedded && (
-            <div className="mt-8 pt-6 border-t border-gray-100">
+            <div className="mt-8 pt-5 md:pt-6 border-t border-gray-100">
               <button
                 type="submit"
-                className="w-full bg-indigo-600 text-white py-3.5 rounded-xl font-bold text-[16px] shadow-lg shadow-indigo-600/30 hover:bg-indigo-600/90 hover:shadow-indigo-600/30 transition-all active:scale-[0.99]"
+                className="w-full bg-indigo-600 text-white py-3.5 md:py-4 rounded-xl font-bold text-[16px] md:text-[18px] shadow-lg shadow-indigo-600/30 hover:bg-indigo-600/90 hover:shadow-indigo-600/30 transition-all active:scale-[0.98]"
               >
                 提交表单
               </button>
