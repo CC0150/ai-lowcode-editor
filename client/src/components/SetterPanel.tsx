@@ -176,9 +176,9 @@ export const SetterPanel = () => {
     );
   }
 
-  const dependencyOptions = components.filter(
-    (c) => c.id !== selectedComponent.id,
-  );
+  // 过滤出依赖项——所有在当前组件之前出现的组件
+  const selectedIndex = components.findIndex((c) => c.id === selectedComponent.id);
+  const dependencyOptions = components.slice(0, selectedIndex);
 
   return (
     <div className="h-full flex flex-col bg-slate-50 relative">

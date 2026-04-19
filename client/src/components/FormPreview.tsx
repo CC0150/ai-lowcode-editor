@@ -77,7 +77,7 @@ export const FormPreview: React.FC<Props> = ({
             newErrors[safeId] = comp.validation.message || "格式不正确";
             if (!firstErrorId) firstErrorId = safeId;
           }
-        } catch (err) {}
+        } catch (err) { }
       }
     });
 
@@ -172,77 +172,65 @@ export const FormPreview: React.FC<Props> = ({
           )}
 
           <div className="flex flex-col gap-7">
-            {components.map((comp, index) => {
-              if (!checkIsVisible(comp)) return null;
+            {components
+              // 1. 先映射出包含原始索引的对象，以便后续生成稳定的 safeKey
+              .map((comp, originalIndex) => ({ comp, originalIndex }))
+              // 2. 过滤掉不满足显示条件的组件
+              .filter(({ comp }) => checkIsVisible(comp))
+              // 3. 此时的 index 就是连续的可见序号
+              .map(({ comp, originalIndex }, visibleIndex) => {
 
-              // 为流式过程中的残缺对象提供临时 key
-              const safeKey = comp.id || `streaming-comp-${index}`;
+                // 使用 originalIndex 保持与表单提交逻辑中的 safeKey 生成规则完全一致
+                const safeKey = comp.id || `streaming-comp-${originalIndex}`;
+                const hasError = !!errors[safeKey];
 
-              /* if (comp.type === "button") {
                 return (
                   <div
                     key={safeKey}
-                    className="pt-4 mt-4 border-t border-gray-100"
+                    ref={(el) => {
+                      fieldRefs.current[safeKey] = el;
+                    }}
+                    className={`flex flex-col gap-2 p-4 -mx-4 rounded-xl transition-all duration-300`}
                   >
-                    <button
-                      type="submit"
-                      className="w-full bg-indigo-600 text-white py-3.5 rounded-xl font-bold text-[16px] shadow-lg shadow-indigo-600/30 hover:bg-indigo-600/90 hover:shadow-indigo-600/30 transition-all active:scale-[0.99]"
+                    <label
+                      className={`text-[15px] font-semibold flex items-start gap-1 leading-snug ${hasError ? "text-red-600" : "text-gray-800"}`}
                     >
-                      {comp.props?.buttonText || "提交表单"}
-                    </button>
+                      <span className="text-gray-400 font-normal mr-1">
+                        {visibleIndex + 1}.
+                      </span>
+                      {comp.label}
+                      {comp.required && (
+                        <span className="text-red-500 font-bold ml-1">*</span>
+                      )}
+                    </label>
+
+                    <div className="mt-1">
+                      <ErrorBoundary
+                        fallback={
+                          <div className="p-4 border border-red-200 bg-red-50 text-red-500 rounded-lg text-sm font-medium flex flex-col items-center justify-center">
+                            <AlertCircle className="w-5 h-5 mb-1" />
+                            <span>AI 生成的组件属性存在异常，无法渲染</span>
+                          </div>
+                        }
+                      >
+                        <FormControl
+                          schema={comp}
+                          value={formData[safeKey]}
+                          hasError={hasError}
+                          onChange={(val) => handleInputChange(safeKey, val)}
+                        />
+                      </ErrorBoundary>
+                    </div>
+
+                    {hasError && (
+                      <p className="text-xs font-medium text-red-500 mt-1 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        {errors[safeKey]}
+                      </p>
+                    )}
                   </div>
                 );
-              } */
-
-              const hasError = !!errors[safeKey];
-
-              return (
-                <div
-                  key={safeKey}
-                  ref={(el) => {
-                    fieldRefs.current[safeKey] = el;
-                  }}
-                  className={`flex flex-col gap-2 p-4 -mx-4 rounded-xl transition-all duration-300`}
-                >
-                  <label
-                    className={`text-[15px] font-semibold flex items-start gap-1 leading-snug ${hasError ? "text-red-600" : "text-gray-800"}`}
-                  >
-                    <span className="text-gray-400 font-normal mr-1">
-                      {index + 1}.
-                    </span>
-                    {comp.label}
-                    {comp.required && (
-                      <span className="text-red-500 font-bold ml-1">*</span>
-                    )}
-                  </label>
-
-                  <div className="mt-1">
-                    <ErrorBoundary
-                      fallback={
-                        <div className="p-4 border border-red-200 bg-red-50 text-red-500 rounded-lg text-sm font-medium flex flex-col items-center justify-center">
-                          <AlertCircle className="w-5 h-5 mb-1" />
-                          <span>AI 生成的组件属性存在异常，无法渲染</span>
-                        </div>
-                      }
-                    >
-                      <FormControl
-                        schema={comp}
-                        value={formData[safeKey]}
-                        hasError={hasError}
-                        onChange={(val) => handleInputChange(safeKey, val)}
-                      />
-                    </ErrorBoundary>
-                  </div>
-
-                  {hasError && (
-                    <p className="text-xs font-medium text-red-500 mt-1 flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" />
-                      {errors[safeKey]}
-                    </p>
-                  )}
-                </div>
-              );
-            })}
+              })}
           </div>
           {components.length > 0 && !isEmbedded && (
             <div className="mt-8 pt-6 border-t border-gray-100">
